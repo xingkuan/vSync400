@@ -147,7 +147,7 @@ from  dba_tab_columns
 where table_name  = upper('&tblName')
 and   owner       = upper('&tblOwner')
 union
-select 999 as cid, 'gu_rowid VARCHAR2 (255)' txt from dual 
+select 999 as cid, 'gu_rowid VARCHAR2 (255), primary key(gu_rowid) ' txt from dual 
 union
 select 1000 as cid, ');' txt from dual
 ) order by cid asc;

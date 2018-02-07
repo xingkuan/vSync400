@@ -354,7 +354,7 @@ class OVSmeta {
          rRset.updateInt("LAST_INIT_DURATION", (int)((endMS - startMS)/1000));
          rRset.updateTimestamp("TS_LAST_INIT",ts);
          rRset.updateTimestamp("TS_LAST_AUDIT",ts);
-         rRset.updateInt("AUD_SOURCE_RECORD_CNT",refreshCnt);     //. JLEE 07/18: refreshCnt is not initilized ?!
+         rRset.updateInt("AUD_SOURCE_RECORD_CNT",refreshCnt);     
          rRset.updateInt("AUD_TARGET_RECORD_CNT",refreshCnt);
 
          rRset.updateRow();

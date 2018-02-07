@@ -410,26 +410,29 @@ class OVStgt {
    }
    public int getRecordCount(){
       int rtv;
-      Connection lConn;
-      Statement lStmt;
+   //   Connection lConn;
+   //   Statement lStmt;
       ResultSet lrRset;
       int i;
 
       rtv=0;
       try {
-         lConn = DriverManager.getConnection(tgtCred.getURL(), tgtCred.getUser(), tgtCred.getPWD());
-         lStmt = lConn.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
+    // should us tgtConn and tgtStmt
+    // 	  lConn = DriverManager.getConnection(tgtCred.getURL(), tgtCred.getUser(), tgtCred.getPWD());
+    //     lStmt = tgtConn.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
+         tgtStmt = tgtConn.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
 
-         lrRset=lStmt.executeQuery("select count(*) from " + tblMeta.getTgtSchema() + "." + tblMeta.getTgtTable());
+    //     lrRset=lStmt.executeQuery("select count(*) from " + tblMeta.getTgtSchema() + "." + tblMeta.getTgtTable());
+         lrRset=tgtStmt.executeQuery("select count(*) from " + tblMeta.getTgtSchema() + "." + tblMeta.getTgtTable());
          if (lrRset.next()) {
             rtv = Integer.parseInt(lrRset.getString(1));  
          }
          lrRset.close();
-         lStmt.close();
-         lConn.close();
+    //     lStmt.close();
+    //     lConn.close();
       } catch(SQLException e) {
          //System.out.println(label + " error during src audit"); 
-         ovLogger.error(label + " error during src audit"); 
+         ovLogger.error(label + " error connect to target: " +e); 
       }
       return rtv;
    }
@@ -461,6 +464,7 @@ class OVStgt {
       tgtStmt.close();
       tgtConn.commit();
       tgtConn.close();
+      ovLogger.info(label + " closed tgt db src");
    }
    public int getRefreshCnt() {
       return refreshCnt;

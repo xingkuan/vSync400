@@ -22,8 +22,11 @@ sqlplus /nolog @tbl01_setup $SRCSCH $TBL $TBLSHORT $TGTSCH $JPOOL $RTYPE
 
 read -p "create tgt tbl in vertica. Press enter to continue ..."
 #fixing SQL errors
-ed wrkVertica.sql <<STMT
-,s/NUMBER(,)/NUMBER/g
-wq
+#g/NUMBER\(,\)/s/NUMBER/
+ed wrkVertica2X.sql  <<STMT
+g/(,)/s//
+g/   *$/s//
+w
 STMT
+
 vsql -h$VHOST -U$VUSER -w -U dbadmin -w$VPASS -f wrkVertica.sql

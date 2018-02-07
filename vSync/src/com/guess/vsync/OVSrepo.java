@@ -14,6 +14,7 @@ import org.apache.logging.log4j.LogManager;
 /*
  class: OVSdb
  Loads all database connection information into array of OVScred from repository
+ TOTO, John 2018.02.01:  should make it singleton!
 */
 
 class OVSrepo {

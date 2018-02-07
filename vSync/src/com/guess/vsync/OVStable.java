@@ -67,10 +67,10 @@ class OVStable {
       int recordCnt;
       int errorCnt;
       
-      if ( (tblMeta.getCurrState() == 0)   ||    // setup, but not initialized 
-    	   ( (tblMeta.getCurrState() == 2  ||    //or (initialized 
-    	      tblMeta.getCurrState() == 5) &&    //     or refreshed) 
-    	      tblMeta.getTgtUseAlt()             //   and use swap ? 
+      if ( (tblMeta.getCurrState() == 0)       ||    // setup, but not initialized 
+    	   ( (tblMeta.getCurrState() == 2            //or (initialized 
+    	      || tblMeta.getCurrState() == 5 ) &&    //     or refreshed) 
+    	      tblMeta.getTgtUseAlt()                 //   and use swap ? 
     	   ) 
       ){
          tblMeta.setCurrentState(1);   // set current state to initializing
@@ -81,7 +81,7 @@ class OVStable {
             tblSrc.truncateLog();
             ovLogger.info("... Truncated src log: " + tblMeta.getLogTable() + "Job " + jobID);
             
-            if (tblMeta.getRefreshType() == 4) {  //JLEE, 07/14: <add this comment only> full refresh
+            if (tblMeta.getRefreshType() == 4) {  //07/14: <add this comment only> full refresh
                tblSrc.setTriggerOff();
                ovLogger.info("Type4 refrsh. Disable trigger. tblID: " + tableID + ". Job " + jobID);
             } else {
@@ -189,6 +189,7 @@ class OVStable {
 //TODO: remove it .. it is here for immediate Prod needs. 08/02/2017
       writeAudit(srcRC, tgtRC, rowDiff);
    }
+   
    //only used for now, 2017/08/01 for the current Prod issue.
    OVSconf conf = OVSconf.getInstance();
    private String initLogDir = conf.getConf("initLogDir");
@@ -218,7 +219,7 @@ class OVStable {
       tgtRC=0;
       
       if (tblMeta.getCurrState() == 2 || tblMeta.getCurrState() == 5) {
-         tblMeta.setCurrentState(3);   // set current state to initializing
+         tblMeta.setCurrentState(3);   // set current state to being refreshed
          tblMeta.markStartTime();
          try {
             tblSrc.initSrcLogQuery();
@@ -267,8 +268,9 @@ class OVStable {
                   ovLogger.error(" tblID: " + tableID + " - " + tblMeta.getSrcDbDesc()  
                     + " exception handling tgt rolled back " );
                   tblSrc.rollback();
- 		         tblSrc.setTriggerOff(); 
-                  tblMeta.setCurrentState(0);
+               //2018.02.02 John: don't turn it off. The next run will resume!
+ 		       //   tblSrc.setTriggerOff(); 
+               //   tblMeta.setCurrentState(0);
                } catch(SQLException e) {
                   ovLogger.error("JobID: " + jobID + ", tblID: " + tableID + e.getMessage());
                }
