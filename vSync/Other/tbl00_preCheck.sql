@@ -17,7 +17,11 @@ define tgtOwner = upper('&4')
 
 -- Important Note:
 --     Please provide the correct source DB connection
--- define srcDBtns = 'CRMP65';  -- the clone CRM for test
+-- | srcDBtns = 'JOTPP';    -- JOTPP prod
+-- |            system/cal618
+-- | srcDBtns = 'CRMP65'   -- the clone db for test
+-- | srcDBtns = 'CRMP64'
+-- |            system/lanchong
 define srcDBtns = 'CRMP64';
 define srcDBuser = 'system';
 define srcDBpwd = 'lanchong';

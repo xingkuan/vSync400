@@ -18,13 +18,18 @@ define tblTr = GV2V_&3
 
 -- Important Note:
 --     Please provide the DB tns name/user/passwd for both the source and meta repository
---define srcDBtns = 'CRMP65'   -- the clone db for test
-define srcDBtns = 'CRMP64'
-define srcDBuser = 'system'
-define srcDBpwd = 'lanchong'
+-- | srcDBtns = 'JOTPP';    -- JOTPP prod
+-- |            system/cal618
+-- | srcDBtns = 'CRMP65'   -- the clone db for test
+-- | srcDBtns = 'CRMP64'
+-- |            system/lanchong
+define srcDBtns = 'CRMP64';
+define srcDBuser = 'system';
+define srcDBpwd = 'lanchong';
 define repDBtns = 'RMAN01'
 define repDBuser = 'vertsnap'
 define repDBpwd = 'BAtm0B1L#'
+
 -- Important Note:
 --     Please find the SOURCE_DB_ID and TARGET_DB_ID from sync_db
 define srcDBid = 3    
