@@ -107,6 +107,7 @@ class OVStgt {
          i=0;
          RowIDs[curRecCnt]=srcRset.getString("rowid");
          try {
+int tmpInt;
             for ( i=1; i<=tblMeta.getFldCnt(); i++ ) {
                //  accomodate different data type per mapping
                switch (tblMeta.getFldType(i-1)) {
@@ -115,7 +116,12 @@ class OVStgt {
                      tgtPStmt.setString(i,srcRset.getString(i));
                      break;
                   case 2:     //int
-                     tgtPStmt.setInt(i,srcRset.getInt(i));
+//                     tgtPStmt.setInt(i,srcRset.getInt(i));
+                	 tmpInt=srcRset.getInt(i);
+                	 if ((tmpInt == 0) && srcRset.wasNull())
+                		 tgtPStmt.setNull(i, java.sql.Types.INTEGER);
+                	 else
+                		 tgtPStmt.setInt(i,tmpInt);
 //int x2 =srcRset.getInt(i);
                      break;
                   case 3:     //Long
@@ -258,6 +264,8 @@ class OVStgt {
                }                                                
             }
          }
+////to be removed. for debug purpose
+//if (refreshCnt > 10000) {break;}
       }
       try {
          batchResults = tgtPStmt.executeBatch();
