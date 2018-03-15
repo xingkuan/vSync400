@@ -32,11 +32,15 @@ define repDBpwd = 'BAtm0B1L#'
 
 -- Important Note:
 --     Please find the SOURCE_DB_ID and TARGET_DB_ID from sync_db
-define srcDBid = 3    
-define tgtDBid = 1    
+define srcDBid = 3
+define tgtDBid = 4
 -- VERTU     1
 -- CRMCLON2  2
 -- CRM       3
+-- VertX     4
+-- JOTPP     5
+-- VERTR     6
+
 
 connect &srcDBuser/&srcDBpwd@&srcDBtns;
 Accept foo PROMPT "Press [Enter]-key to create log table and trigger... "
