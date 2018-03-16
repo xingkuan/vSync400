@@ -101,13 +101,13 @@ class OVStgt {
       curRecCnt = 0;
       refreshCnt = 0;
       commFlag = true;
-      
+int tmpInt;     
       // insert records into batch
       while (srcRset.next()) {
          i=0;
          RowIDs[curRecCnt]=srcRset.getString("rowid");
          try {
-int tmpInt;
+
             for ( i=1; i<=tblMeta.getFldCnt(); i++ ) {
                //  accomodate different data type per mapping
                switch (tblMeta.getFldType(i-1)) {
