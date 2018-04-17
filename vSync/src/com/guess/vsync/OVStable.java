@@ -45,7 +45,7 @@ class OVStable {
 
       tblMeta.setTableID(tableID);
       rtv = tblMeta.init(jobID);
-      srcTblAb7 = tblMeta.getSrcTable().substring(0,7);
+      srcTblAb7 = tblMeta.getSrcTable().substring(0,Math.min(7,tblMeta.getSrcTable().length()));
 
       // initialize source object
       tblSrc = new OVSsrc();
@@ -97,8 +97,10 @@ class OVStable {
             tblTgt.setSrcRset(tblSrc.getSrcResultSet());
             recordCnt=tblTgt.initLoadType1();
 
-            //errorCnt=tblTgt.getErrCnt();
             tblMeta.setRefreshCnt(recordCnt);
+            errorCnt=tblTgt.getErrCnt();
+            if(errorCnt>0)
+            	metrix.sendMX("errCnt,jobId="+jobID+",tblID="+srcTblAb7+"~"+tableID+" value=" + errorCnt + "\n");
             //ovLogger.info("JobID: " + jobID + ", tblID: " + tableID  + " stats saved");
 
             tblTgt.commit();
@@ -237,6 +239,9 @@ class OVStable {
             ovLogger.info("Refreshed tblID: " + tableID + ", record Count: " + recordCnt);
 
             errorCnt=tblTgt.getErrCnt();
+            if(errorCnt>0)
+            	metrix.sendMX("errCnt,jobId="+jobID+",tblID="+srcTblAb7+"~"+tableID+" value=" + errorCnt + "\n");
+
             tblMeta.markEndTime();
 
             tblMeta.setRefreshCnt(tblTgt.getRefreshCnt());

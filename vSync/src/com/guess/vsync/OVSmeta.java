@@ -152,7 +152,7 @@ class OVSmeta {
             tsLastRefresh=rRset.getTimestamp("TS_LAST_REFRESH");
             auditExp=rRset.getInt("AUDIT_EXP");
             
-            srcTblAb7 = srcTable.substring(0, 7);
+            srcTblAb7 = srcTable.substring(0, Math.min(7, srcTable.length()));
             
            // ovLogger.log(label + " Table " + tableID + " checking for audit");
             if (currState==5 && auditExp!=0){  //. "refreshed" and ?

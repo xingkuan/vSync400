@@ -28,7 +28,8 @@ class OVStgt {
    private int batchSize = Integer.parseInt(conf.getConf("batchSize"));
 
    private static final Logger ovLogger = LogManager.getLogger();
-
+   //private static final OVSmetrix metrix = OVSmetrix.getInstance();
+   
    public boolean init() {
       label=">";
       return linit();
@@ -102,6 +103,9 @@ class OVStgt {
       refreshCnt = 0;
       commFlag = true;
 int tmpInt;     
+float tmpFloat;
+double tmpDouble;
+long tmpLong;
       // insert records into batch
       while (srcRset.next()) {
          i=0;
@@ -125,16 +129,29 @@ int tmpInt;
 //int x2 =srcRset.getInt(i);
                      break;
                   case 3:     //Long
-                     tgtPStmt.setLong(i,srcRset.getLong(i));
+                     //tgtPStmt.setLong(i,srcRset.getLong(i));
 //long x3 =srcRset.getLong(i);
+                 	 tmpLong=srcRset.getLong(i);
+                 	 if ((tmpLong == 0) && srcRset.wasNull())
+                 		 tgtPStmt.setNull(i, java.sql.Types.NULL);
+                 	 else
+                 		 tgtPStmt.setDouble(i,tmpLong);
                      break;
                   case 4:     //Double
-                     tgtPStmt.setDouble(i,srcRset.getDouble(i));
-//double x4 =srcRset.getDouble(i);
+                     //tgtPStmt.setDouble(i,srcRset.getDouble(i));
+                	 tmpDouble=srcRset.getDouble(i);
+                	 if ((tmpDouble == 0) && srcRset.wasNull())
+                		 tgtPStmt.setNull(i, java.sql.Types.DOUBLE);
+                	 else
+                		 tgtPStmt.setDouble(i,tmpDouble);
                      break;
                   case 5:     //Float
-                     tgtPStmt.setFloat(i,srcRset.getFloat(i));
-//float x5 =srcRset.getFloat(i);
+                     //tgtPStmt.setFloat(i,srcRset.getFloat(i));
+                	 tmpFloat=srcRset.getFloat(i);
+                	 if ((tmpFloat == 0) && srcRset.wasNull())
+                		 tgtPStmt.setNull(i, java.sql.Types.FLOAT);
+                	 else
+                		 tgtPStmt.setFloat(i,tmpFloat);
                      break;
                   case 6:     //Timestamp
                      tgtPStmt.setTimestamp(i,srcRset.getTimestamp(i));
@@ -287,7 +304,10 @@ int tmpInt;
          } 
          return -1;         
       }
-
+    //if(errCnt>0){
+    //	  metrix.sendMX("errCnt,jobId="+jobID+",tblID="+srcTblAb7+"~"+tableID+" value=" + errCnt + "\n");
+    //  }
+      
       return refreshCnt;
    }
    

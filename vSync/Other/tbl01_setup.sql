@@ -102,7 +102,7 @@ select 'insert into SYNC_TABLE_FIELD (FIELD_ID, TABLE_ID, SOURCE_FIELD, TARGET_F
        ) || ', '   
    || decode(substr(data_type,1,3),
             'NUM',  decode(data_scale,
-            		null, 2,
+            		null, 1,
                     0, 2,
                        5
                   ) ,
@@ -143,6 +143,7 @@ union
 select column_id cid, column_name || ' ' ||        
        decode(data_type,
           'NUMBER', decode(data_scale,
+                  null, 'number(22,10)',
                   0, 'NUMBER(' || decode(data_precision,38,22,data_precision) ||')',
                      'NUMBER(' || decode(data_precision,38,22,data_precision) ||','|| data_scale ||')'
                   ),
