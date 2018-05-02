@@ -20,7 +20,7 @@ class OVStgt {
    private ResultSet srcRset;
    private int errCnt;
    private int refreshCnt;
-   private int MaxInCount = 5000;  //10000;
+   //private int MaxInCount = 5000;  //10000;    2018.04.30: use batchSize
    private String label;
 
    OVSconf conf = OVSconf.getInstance();
@@ -362,11 +362,14 @@ long tmpLong;
          CurrentRecordCount++ ;
          NeedsProcessing    = true;
          DeleteTargetTable += ", '" +  srcRset.getString("M_ROW") + "'" ;
-         if ( CurrentRecordCount == MaxInCount ) {
+         //if ( CurrentRecordCount == MaxInCount ) {
+         if ( CurrentRecordCount == batchSize ) {
             DeleteTargetTable += ") " ;
             lRefreshCnt = lRefreshCnt + CurrentRecordCount;
             //putLog(new java.util.Date() + "    - " + CurrentRecordCount + " - " + lRefreshCnt + " / " + oLogCnt);
             tgtStmt.executeUpdate (DeleteTargetTable) ;
+            tgtConn.commit();
+            ovLogger.info(label +  " deleted - " + TotalRecordsProcessed );
             CurrentRecordCount = 0 ;
             NeedsProcessing    = false;
             DeleteTargetTable  = " delete  from "  + tblMeta.getTgtSchema() + "." + tblMeta.getTgtTable();
@@ -384,6 +387,8 @@ long tmpLong;
          lRefreshCnt = lRefreshCnt + CurrentRecordCount;
          //putLog(new java.util.Date() + "    - " + CurrentRecordCount + " - " + lRefreshCnt + " / " + oLogCnt);
          tgtStmt.executeUpdate (DeleteTargetTable) ;
+         tgtConn.commit();
+         ovLogger.info(label +  " deleted - " + TotalRecordsProcessed );
       }
       srcRset.close();
    }

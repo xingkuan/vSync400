@@ -276,6 +276,7 @@ class OVStable {
                //2018.02.02 John: don't turn it off. The next run will resume!
  		       //   tblSrc.setTriggerOff(); 
                //   tblMeta.setCurrentState(0);
+                  tblMeta.setCurrentState(5);
                } catch(SQLException e) {
                   ovLogger.error("JobID: " + jobID + ", tblID: " + tableID + e.getMessage());
                }
