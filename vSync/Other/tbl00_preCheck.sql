@@ -38,7 +38,7 @@ select '!!! name too long',
        length(&tblName)   len
 from   dual
 where  length(&tblName)   > 21
-or     length(&tblShort)  > 21
+and    length(&tblShort)  > 21
 ;
 
 --
