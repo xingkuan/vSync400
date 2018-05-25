@@ -1,6 +1,12 @@
+export ORACLE_HOME=/opt/oracle/instantclient_11_2
+export TNS_ADMIN=$ORACLE_HOME
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$ORACLE_HOME
+export PATH=$PATH:$ORACLE_HOME:/opt/vertica/bin/
+export SQLPATH=$ORACLE_HOME
 
+WRKDIR=/tmp/VSYNC
 # ... to be improved. For now, hardcoded one for different srouce DB:
-# dbID 3: crm CRMDEV VCRM system/lanchong@CMP64
+# dbID 3: crm CRMDEV VCRM system/lanchong@CRMP64
 #      5: sewn SEWN VSEWN system/cal618@JOTPP
 dbID=5
 sschName=SEWN
@@ -17,9 +23,9 @@ fun_genRowIDs() {
 #  echo ${tschName}
 #  echo ${tblName}
 
-  vsql -A -t -d vertx -h vertx1 -U dbadmin -w Bre@ker321 -o /tmp/XXX -c "select gu_rowid from ${tschName}.${tblName} tablesample(10) limit 100"
+vsql -A -t -d vertx -h vertx1 -U dbadmin -w Bre@ker321 -o ${WRKDIR}/XXX -c "select gu_rowid from ${tschName}.${tblName} tablesample(10) limit 100"
 
-ed /tmp/XXX <<STMT
+ed ${WRKDIR}/XXX <<STMT
 1,\$s/^/'
 1,\$s/\$/',
 \$
@@ -39,9 +45,9 @@ fun_oraCnt() {
   local tschName=$2
   local tblName=$3
 
-  echo "select count(1) from ${sschName}.$tblName a where rowid in (" > /tmp/${tblName}O.sql
-  cat /tmp/XXX >> /tmp/${tblName}O.sql
-  echo ") ; " >> /tmp/${tblName}O.sql
+  echo "select count(1) from ${sschName}.$tblName a where rowid in (" > ${WRKDIR}/${tblName}O.sql
+  cat ${WRKDIR}/XXX >> ${WRKDIR}/${tblName}O.sql
+  echo ") ; " >> ${WRKDIR}/${tblName}O.sql
     sqlplus -s $srcDBUrl <<STMT
 set heading off
 set feedback off
@@ -54,12 +60,12 @@ set trimout on
 set termout off
 set colsep   "|"
 alter session set nls_date_format='yyyy-mm-dd hh24:mi:ss';
-spool /tmp/${tblName}O.txt
-@/tmp/${tblName}O.sql
+spool ${WRKDIR}/${tblName}O.txt
+@${WRKDIR}/${tblName}O.sql
 exit
 STMT
 
-#local rslt=$(cat /tmp/${tblName}O.txt | sed 's/[^0-9]*//g')
+#local rslt=$(cat ${WRKDIR}/${tblName}O.txt | sed 's/[^0-9]*//g')
 #
 #echo $rslt
 }
@@ -74,7 +80,7 @@ fun_sendMatrix()
 
 #### MAIN ####
 ##############
-# generate a list of table to /tmp/tmpTbls.lst by calling mon1.sql
+# generate a list of table
 sqlplus -s /nolog <<STMT
 define repDBtns = 'RMAN01'
 define repDBuser = 'vertsnap'
@@ -88,21 +94,21 @@ set echo off
 set verify off
 set lines 300
 
-spool /tmp/tmpTbls.lst
-select source_table from sync_table where source_db_id=$dbID and rownum<3 ;
+spool ${WRKDIR}/tmpTbls.lst
+select source_table from sync_table where source_db_id=$dbID and rownum<4;
 exit;
 STMT
 
-vi /tmp/tmpTbls.lst -c ':1,$s/  *$//g' -c ':1,$/^$/d'  -c':wq'
+#vi /tmp/tmpTbls.lst -c ':1,$s/  *$//g' -c ':1,$/^$/d'  -c':wq'
 #vi /tmp/tmpTbls.lst -c ':1,$/^$/d' -c':wq'
 
-grep -v ^$ /tmp/tmpTbls.lst | while read ln
+grep -v ^$ ${WRKDIR}/tmpTbls.lst | while read ln
 do
     echo $ln
     # get samle rowid, and data from vertX
     #./mon1.sh $sschName $tschName $ln
     fun_genRowIDs $sschName $tschName $ln
-    rowCnt=`wc -l < /tmp/XXX`
+    rowCnt=`wc -l < ${WRKDIR}/XXX`
     echo row count $rowCnt
 
     if [[ $rowCnt == 0 ]] ; then
@@ -110,12 +116,12 @@ do
     else
       echo compare $ln ...
       fun_oraCnt $sschName $tschName $ln
-      mis=`cat /tmp/${ln}O.txt|grep ERROR|wc -l`
+      mis=`cat ${WRKDIR}/${ln}O.txt|grep ERROR|wc -l`
       if [[ $mis > 0 ]] ; then
         echo mismatch $ln
         fun_sendMatrix $ln 10   ## just hard code a number here!
       else
-        srcCnt=$(cat /tmp/${ln}O.txt | sed 's/[^0-9]*//g')
+        srcCnt=$(cat ${WRKDIR}/${ln}O.txt | sed 's/[^0-9]*//g')
         echo source count $srcCnt
         diff=$(( $rowCnt - $srcCnt ))
         echo difference $diff
@@ -127,6 +133,11 @@ do
           fun_sendMatrix $ln $diff
         fi
       fi
+      rm ${WRKDIR}/${ln}O.txt
+      rm ${WRKDIR}/${ln}O.sql
     fi
+    rm ${WRKDIR}/XXX
 
 done
+
+rm ${WRKDIR}/tmpTbls.lst
