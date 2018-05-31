@@ -4,14 +4,16 @@ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$ORACLE_HOME
 export PATH=$PATH:$ORACLE_HOME:/opt/vertica/bin/
 export SQLPATH=$ORACLE_HOME
 
+DDLTBLLST=/tmp/VSYNC/DDLMOD.lst
 WRKDIR=/tmp/VSYNC
-# ... to be improved. For now, hardcoded one for different srouce DB:
-# dbID 3: crm CRMDEV VCRM system/lanchong@CRMP64
-#      5: sewn SEWN VSEWN system/cal618@JOTPP
-dbID=5
-sschName=SEWN
-tschName=VSEWN
-srcDBUrl=system/cal618@JOTPP
+# to Check if any data out of sync due to DDL change
+# example usage:
+#  vSyncDataChk.sh CRM system/lanchong@CRMP64 CRMDEV VCRM
+#  vSyncDataChk.sh JOTPP system/cal618@JOTPP SEWN VSEWN
+dbName=$1
+srcDBUrl=$2
+sschName=$3
+tschName=$4
 
 
 fun_genRowIDs() {
@@ -73,13 +75,18 @@ STMT
 fun_sendMatrix()
 {
     curl -i -XPOST http://grafana01:8086/write?db=vsync --data-binary "vSyncMismatch,key=$1 value=$2"
-
+    echo "${dbName}|${sschName}|$1" >> $DDLTBLLST
     return $?
 }
 
 
 #### MAIN ####
 ##############
+# make sure /tmp/VSYNC/DDLMOD.lst is empty
+#> $DDLTBLLST
+### To Be Called by a MASTER script vSyncChk.sh
+### in it, $DDLTBLLST will be cleaned before each run
+#############
 # generate a list of table
 sqlplus -s /nolog <<STMT
 define repDBtns = 'RMAN01'
@@ -95,7 +102,7 @@ set verify off
 set lines 300
 
 spool ${WRKDIR}/tmpTbls.lst
-select source_table from sync_table where source_db_id=$dbID and rownum<4;
+select source_table from sync_table t,sync_db d where d.db_id=t.source_db_id and d.DB_DESC='$dbName' and rownum<4;
 exit;
 STMT
 
