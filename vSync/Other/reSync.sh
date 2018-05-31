@@ -38,7 +38,9 @@ do
   #echo $DB $SSCH $TBL $DBCONN
   # 1: reset curr_state=0 for the table, and disable the triggers
   /home/jenadmin/vSync/jobs/stpTbl.sh $DBCONN $SSCH $TBL
-  # 2: re-sync the table
+  # 2: truncate target table
+  # for convenience, did it in vSyncDataChk.sh
+  # 3: re-sync the table
   tblID=`grep -v ^$ $TIDFILE|tr -dc '0-9'`
   echo "to re-sync $tblID: $SSCH $TB of $DB"
   /home/jenadmin/vSync/SQL/initTbl.sh $tblID

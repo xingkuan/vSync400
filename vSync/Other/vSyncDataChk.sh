@@ -76,6 +76,8 @@ fun_sendMatrix()
 {
     curl -i -XPOST http://grafana01:8086/write?db=vsync --data-binary "vSyncMismatch,key=$1 value=$2"
     echo "${dbName}|${sschName}|$1" >> $DDLTBLLST
+    # truncate the target in Vertica
+    vsql -A -t -d vertx -h vertx1 -U dbadmin -w Bre@ker321 -c "truncate table ${tschName}.$1} "
     return $?
 }
 
@@ -102,7 +104,7 @@ set verify off
 set lines 300
 
 spool ${WRKDIR}/tmpTbls.lst
-select source_table from sync_table t,sync_db d where d.db_id=t.source_db_id and d.DB_DESC='$dbName' and rownum<4;
+select source_table from sync_table t,sync_db d where d.db_id=t.source_db_id and d.DB_DESC='$dbName' and t.source_schema='$sschName' and rownum<4;
 exit;
 STMT
 
