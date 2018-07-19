@@ -23,17 +23,22 @@ define tblTr = GV2V_&3
 -- | srcDBtns = 'CRMP65'   -- the clone db for test
 -- | srcDBtns = 'CRMP64'
 -- |            system/lanchong
-define srcDBtns = 'CRMP64';
-define srcDBuser = 'system';
-define srcDBpwd = 'lanchong';
+--define srcDBtns = 'CRMP64';
+--define srcDBuser = 'system';
+--define srcDBpwd = 'lanchong';
+-- take in as a parameter:
+define srcURL = &7
 define repDBtns = 'RMAN01'
 define repDBuser = 'vertsnap'
 define repDBpwd = 'BAtm0B1L#'
 
 -- Important Note:
 --     Please find the SOURCE_DB_ID and TARGET_DB_ID from sync_db
-define srcDBid = 3
-define tgtDBid = 4
+--define srcDBid = 3
+--define tgtDBid = 4
+-- take from parameter
+define srcDBid = &8
+define tgtDBid = &9
 -- VERTU     1
 -- CRMCLON2  2
 -- CRM       3
@@ -42,7 +47,8 @@ define tgtDBid = 4
 -- VERTR     6
 
 
-connect &srcDBuser/&srcDBpwd@&srcDBtns;
+--connect &srcDBuser/&srcDBpwd@&srcDBtns;
+connect &srcURL;
 Accept foo PROMPT "Press [Enter]-key to create log table and trigger... "
 --
 CREATE TABLE &tblOwner..&tblTX  
@@ -78,7 +84,8 @@ commit;
 -- populate table fiedls to Rep Meta.
 -- first generate DDL by connecting to the source DB
 -- then connect to RepMeta to run the generated DDL.
-connect &srcDBuser/&srcDBpwd@&srcDBtns;
+--connect &srcDBuser/&srcDBpwd@&srcDBtns;
+connect &srcURL;
 Accept foo PROMPT "Press [Enter]-key to generate DDL for fields registration ... "
 
 set heading off;
@@ -133,7 +140,8 @@ commit;
 
 
 Accept foo PROMPT "Press [Enter]-key to generate DDL for Vertica ... "
-connect &srcDBuser/&srcDBpwd@&srcDBtns;
+--connect &srcDBuser/&srcDBpwd@&srcDBtns;
+connect &srcURL;
 set lines 300
 set feedback off
 spool wrkVertica.sql

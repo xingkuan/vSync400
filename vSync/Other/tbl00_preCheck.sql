@@ -22,14 +22,17 @@ define tgtOwner = upper('&4')
 -- | srcDBtns = 'CRMP65'   -- the clone db for test
 -- | srcDBtns = 'CRMP64'
 -- |            system/lanchong
-define srcDBtns = 'CRMP64';
-define srcDBuser = 'system';
-define srcDBpwd = 'lanchong';
+--define srcDBtns = 'CRMP64';
+--define srcDBuser = 'system';
+--define srcDBpwd = 'lanchong';
+-- take in as a parameter:
+define srcURL = &5
 define repDBtns = 'RMAN01';
 define repDBuser = 'vertsnap';
 define repDBpwd = 'BAtm0B1L#';
 
-connect &srcDBuser/&srcDBpwd@&srcDBtns;
+--connect &srcDBuser/&srcDBpwd@&srcDBtns;
+connect &srcURL;
 select 'Fix the following issues before proceeding : ' from dual;
 -- 
 -- Table name can't be longger than 21 chars

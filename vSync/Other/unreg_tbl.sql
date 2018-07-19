@@ -1,6 +1,6 @@
-define tblOwner = &1
-define tblName = &2
-
+define tblOwner = &3
+define tblName = &5
+--# the 4th parameter, TGTSCH, is not used here.
 -- Important Note:
 --     Please provide the DB tns name/user/passwd for both the source and meta repository
 -- | srcDBtns = 'JOTPP';    -- JOTPP prod
@@ -8,18 +8,18 @@ define tblName = &2
 -- | srcDBtns = 'CRMP65'   -- the clone db for test
 -- | srcDBtns = 'CRMP64'
 -- |            system/lanchong
-define srcDBtns = 'CRMP64'
-define srcDBuser = 'system';
-define srcDBpwd = 'lanchong';
+--# define srcDBtns = 'CRMP64'
+--# define srcDBuser = 'system';
+--# define srcDBpwd = 'lanchong';
+--# take srcDBurl from commandline
+define srcDBurl = &1
 define repDBtns = 'RMAN01'
 define repDBuser = 'vertsnap'
 define repDBpwd = 'BAtm0B1L#'
 
-
--- Important Note:
---     Please find the SOURCE_DB_ID and TARGET_DB_ID from sync_db
-define srcDBid = 3
-define tgtDBid = 6
+define srcDBid = &2   --not used
+-- has only one tgtDB, vertX, tgtDBid=4
+define tgtDBid = 4     -- not used
 -- VERTU     1
 -- CRMCLON2  2
 -- CRM       3
@@ -48,11 +48,11 @@ print :tbl_id
 print :src_trg
 print :src_log
 Accept foo PROMPT "Sure want to drop vsync for: &tblOwner &tblName? Press [Enter]-key to grant ... "
-connect &srcDBuser/&srcDBpwd@&srcDBtns;
+connect &srcDBurl;
 select :tbl_id from dual;
 spool /tmp/tempVSYNC.sql
-select 'drop trigger '||:src_trg||' disable;' from dual;
-select 'drop table &tblOwner.'||:src_log||' disable;' from dual;
+select 'drop trigger '||:src_trg||';' from dual;
+select 'drop table &tblOwner'||'.'||:src_log||';' from dual;
 spool off
 --alter TRIGGER :src_trg disable;
 @/tmp/tempVSYNC.sql
