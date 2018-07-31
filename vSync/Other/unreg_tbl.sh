@@ -3,11 +3,28 @@
 # example usage: stpTbl.sh CRMDEV CST_EMAIL
 #
 
-SRCDBURL=$1
+SRCDB=$1    #SRCDBURL=$1
 SRCDBID=$2
 SRCSCH=$3
 TGTSCH=$4
 TBL=$5
+
+fun_getDBConn()
+{
+    if [ "$1" == "CRM" ]
+    then
+      echo "system/lanchong@CRMP64"
+    elif [ "$1" == "JOTPP" ]
+    then
+      echo "system/cal618@JOTPP"
+    else
+      echo not correct DB!
+      exit 1
+    fi
+}
+
+set -e
+SRCDBURL=$(fun_getDBConn $SRCDB)
 
 echo unregister  $SRCSCH $TBL
 read -p "pre check. Press enter to continue ..."

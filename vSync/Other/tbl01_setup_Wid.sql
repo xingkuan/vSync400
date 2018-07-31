@@ -11,7 +11,8 @@ define tblShort = &3
 define tgtOwner = &4
 define poolID = &5
 define refType = &6
-define tblID = &7
+-- define tblTX = &3._TX_LOG2   the old ...
+-- define tblTr = GU2V_&3
 define tblTX = &3._TX_LOG3
 define tblTr = GV2V_&3
 
@@ -22,18 +23,23 @@ define tblTr = GV2V_&3
 -- | srcDBtns = 'CRMP65'   -- the clone db for test
 -- | srcDBtns = 'CRMP64'
 -- |            system/lanchong
-define srcDBtns = 'CRMP64';
-define srcDBuser = 'system';
-define srcDBpwd = 'lanchong';
+--define srcDBtns = 'CRMP64';
+--define srcDBuser = 'system';
+--define srcDBpwd = 'lanchong';
+-- take in as a parameter:
+define srcURL = &7
 define repDBtns = 'RMAN01'
 define repDBuser = 'vertsnap'
 define repDBpwd = 'BAtm0B1L#'
 
-
 -- Important Note:
 --     Please find the SOURCE_DB_ID and TARGET_DB_ID from sync_db
-define srcDBid = 3
-define tgtDBid = 4
+--define srcDBid = 3
+--define tgtDBid = 4
+-- take from parameter
+define srcDBid = &8
+define tgtDBid = &9
+define tblID = &10
 -- VERTU     1
 -- CRMCLON2  2
 -- CRM       3
@@ -41,10 +47,14 @@ define tgtDBid = 4
 -- JOTPP     5
 -- VERTR     6
 
-connect &srcDBuser/&srcDBpwd@&srcDBtns;
-select '&tblOwner..&tblTX' from dual;
 
-Accept foo PROMPT "Press [Enter]-key to create log table and trigger... "
+--connect &srcDBuser/&srcDBpwd@&srcDBtns;
+connect &srcURL;
+select 'INFO ...' from dual;
+select 'sdbID: &srcDBid ;;; sSch: &tblOwner ;;; poolID: &poolID ;;; tblID: &tblID' from dual;
+
+
+--#Accept foo PROMPT "Press [Enter]-key to create log table and trigger... "
 --
 CREATE TABLE &tblOwner..&tblTX
    (  M_ROW VARCHAR2(255 BYTE),  SNAPTIME DATE) TABLESPACE SNAPLOG
@@ -60,7 +70,7 @@ CREATE OR REPLACE TRIGGER &tblOwner..&tblTr
 alter TRIGGER &tblOwner..&tblTr disable;
 
 connect &repDBuser/&repDBpwd@&repDBtns;
-Accept foo PROMPT "Press [Enter]-key to regist table ... "
+--#Accept foo PROMPT "Press [Enter]-key to regist table ... "
 insert into VERTSNAP.SYNC_TABLE
      (SOURCE_SCHEMA, TARGET_SCHEMA, SOURCE_TABLE, TARGET_TABLE, CURR_STATE, TABLE_WEIGHT, TABLE_ID,
       SOURCE_TRIGGER_NAME, T_ORDER, ORA_DELIMITER, EXP_TYPE, EXP_TIMEOUT, VERT_DELIMITER, PARTITIONED,
@@ -74,8 +84,9 @@ commit;
 -- populate table fiedls to Rep Meta.
 -- first generate DDL by connecting to the source DB
 -- then connect to RepMeta to run the generated DDL.
-connect &srcDBuser/&srcDBpwd@&srcDBtns;
-Accept foo PROMPT "Press [Enter]-key to generate DDL for fields registration ... "
+--connect &srcDBuser/&srcDBpwd@&srcDBtns;
+connect &srcURL;
+--#Accept foo PROMPT "Press [Enter]-key to generate DDL for fields registration ... "
 
 set heading off;
 set feedback off;
@@ -114,7 +125,7 @@ and    owner      = upper('&tblOwner')
 -- order by a.column_id
 union
 select 'insert into SYNC_TABLE_FIELD (FIELD_ID, TABLE_ID, SOURCE_FIELD, TARGET_FIELD, XFORM_FCTN, XFORM_TYPE ) values ( '
-    || (select max(column_id) +1 from dba_tab_columns where table_name = upper('&tblName') and owner = upper('&tblOwner')) || ', '  || &tblID || ', '
+    || (select max(column_id) +1 from dba_tab_columns where table_name = upper('&tblName') and owner = upper('&tblOwner')) || ', '  ||  &rblID  || ', '
     || ''''  || 'rowid' || '''' || ', '
     || ''''  || 'gu_rowid' || '''' || ', '
     || '''nvl(ROWID, ''''NULL'''' )''' || ', 1  ) ;'
@@ -123,13 +134,14 @@ from   dual
 spool off
 
 connect &repDBuser/&repDBpwd@&repDBtns;
-Accept foo PROMPT "view wrkFieldDDL.sql, then press [Enter]-key to regist table fields ... "
+--#Accept foo PROMPT "view wrkFieldDDL.sql, then press [Enter]-key to regist table fields ... "
 @wrkFieldDDL.sql
 commit;
 
 
-Accept foo PROMPT "Press [Enter]-key to generate DDL for Vertica ... "
-connect &srcDBuser/&srcDBpwd@&srcDBtns;
+--#Accept foo PROMPT "Press [Enter]-key to generate DDL for Vertica ... "
+--connect &srcDBuser/&srcDBpwd@&srcDBtns;
+connect &srcURL;
 set lines 300
 set feedback off
 spool wrkVertica.sql
@@ -160,13 +172,14 @@ select 1000 as cid, ');' txt from dual
 spool off
 
 
-Accept foo PROMPT "Press [Enter]-key to grant ... "
+--#Accept foo PROMPT "Press [Enter]-key to grant ... "
 -- Grants
 grant select, insert, update, delete on &tblOwner..&tblName to vertsnap ;
 grant all on &tblOwner..&tblTX to vertsnap ;
 
 select 'Please note down the table_id:' from dual;
-select  '&tblID' from dual;
-Accept foo PROMPT "Done with Oracle. Remenber to run wrkVertica.sql against Vertica. Press [Enter]-key to grant ... "
+select '&tblID' from dual;
+
+--#Accept foo PROMPT "Done with Oracle. Remenber to run wrkVertica.sql against Vertica. Press [Enter]-key to grant ... "
 
 exit

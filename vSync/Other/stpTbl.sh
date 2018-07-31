@@ -1,20 +1,32 @@
-export ORACLE_HOME=/opt/oracle/instantclient_11_2
-export TNS_ADMIN=$ORACLE_HOME
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$ORACLE_HOME
-export PATH=$PATH:$ORACLE_HOME:/opt/vertica/bin/
-export SQLPATH=$ORACLE_HOME
-
 #
 # This is the main script for stopping a replication of a table
 # example usage: stpTbl.sh system/lanchong@CRMP64 CRMDEV CST_EMAIL
 #
+fun_getDBConn()
+{
+    if [ "$1" == "CRM" ]
+    then
+      echo "system/lanchong@CRMP64"
+    elif [ "$1" == "JOTPP" ]
+    then
+      echo "system/cal618@JOTPP"
+    else
+      echo not correct DB!
+      exit 1
+    fi
+}
+
+set -e
+SRCURL=$(fun_getDBConn $1)
+
 
 echo stop replicating $2 $3
 #read -p "pre check. Press enter to continue ..."
+#mkdir /tmp/VSYNC
 
 sqlplus -s /nolog <<SQLSTMT
 
-define srcDB = $1
+define srcDB = $SRCURL
 define tblOwner = $2
 define tblName = $3
 
@@ -58,6 +70,7 @@ spool /tmp/tempVSYNC.sql
 select 'alter trigger '||:src_trg||' disable;' from dual;
 spool off
 @/tmp/tempVSYNC.sql
+
 
 set heading off;
 set feedback off;

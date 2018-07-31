@@ -40,8 +40,7 @@ select 'Fix the following issues before proceeding : ' from dual;
 select '!!! name too long',
        length(&tblName)   len
 from   dual
-where  length(&tblName)   > 21
-and    length(&tblShort)  > 21
+where  length(&tblShort)  > 21
 ;
 
 --

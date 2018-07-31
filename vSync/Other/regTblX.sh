@@ -9,12 +9,29 @@ TBL=$6
 TBLSHORT=$7
 SRCSCH=$3
 TGTSCH=$4
-SRCURL=$2
+SRCDB=$2   #SRCURL=$2
 SRCDBID=$1
 TGTDBID=4  #we have only one, that is VERTX below, which is 4
 VHOST=vertx1
 VUSER=dbadmin
 VPASS="Bre@ker321"
+
+fun_getDBConn()
+{
+    if [ "$1" == "CRM" ]
+    then
+      echo "system/lanchong@CRMP64"
+    elif [ "$1" == "JOTPP" ]
+    then
+      echo "system/cal618@JOTPP"
+    else
+      echo not correct DB!
+      exit 1
+    fi
+}
+
+set -e
+SRCURL=$(fun_getDBConn $SRCDB)
 
 echo $TBL
 read -p "pre check. Press enter to continue ..."

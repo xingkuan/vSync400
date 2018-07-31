@@ -1,30 +1,51 @@
-
 #
 # This is the main script for registering table for replication.
 #
 
-JPOOL=2  # Job pool ID. Basically, tables are organized into different pools to be refreshed together.
-RTYPE=1  # For now, all are type 1. 1 for incremental refresh; 2 for total refresh.
-TBL=$1
-TBLID=$3
-TBLSHORT=$2
-SRCSCH=CRMDEV  #CRMDEV, SEWN
-TGTSCH=VCRM    #VCRM  , VSEWN
+JPOOL=$5
+RTYPE=1
+TBL=$6
+TBLSHORT=$7
+SRCSCH=$3
+TGTSCH=$4
+#SRCURL=$2
+SRCDB=$2
+SRCDBID=$1
+TBLID=$8
+TGTDBID=4  #we have only one, that is VERTX below, which is 4
 VHOST=vertx1
 VUSER=dbadmin
 VPASS="Bre@ker321"
 
-echo $TBL  $TBLID
-read -p "pre check. Press enter to continue ..."
-sqlplus /nolog @tbl00_preCheck $SRCSCH $TBL $TBLSHORT $TGTSCH
+fun_getDBConn()
+{
+    if [ "$1" == "CRM" ]
+    then
+      echo "system/lanchong@CRMP64"
+    elif [ "$1" == "JOTPP" ]
+    then
+      echo "system/cal618@JOTPP"
+    else
+      echo not correct DB!
+      exit 1
+    fi
+}
 
-read -p "regsiter. Press enter to continue ..."
-sqlplus /nolog @tbl01_setup_Wid $SRCSCH $TBL $TBLSHORT $TGTSCH $JPOOL $RTYPE $TBLID
+set -e
+SRCURL=$(fun_getDBConn $SRCDB)
 
-read -p "create tgt tbl in vertica. Press enter to continue ..."
+echo $TBL
+echo $TBLID
+
+#read -p "regsiter. Press enter to continue ..."
+sqlplus /nolog @tbl01_setup_Wid $SRCSCH $TBL $TBLSHORT $TGTSCH $JPOOL $RTYPE $SRCURL $SRCDBID $TGTDBID $TBLID
+
+#read -p "create tgt tbl in vertica. Press enter to continue ..."
 #fixing SQL errors
-ed wrkVertica.sql <<STMT
-,s/NUMBER(,)/NUMBER/g
-wq
+#g/NUMBER\(,\)/s/NUMBER/
+ed wrkVertica.sql  <<STMT
+g/(,)/s//
+g/   *$/s//
+w
 STMT
 vsql -h$VHOST -U$VUSER -w -U dbadmin -w$VPASS -f wrkVertica.sql

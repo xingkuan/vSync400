@@ -35,6 +35,8 @@ set lines 300;
 set pages 80
 
 connect &repDBuser/&repDBpwd@&repDBtns;
+select 'sdb_id: '||source_db_id||';;;; pool_id: '||pool_id||';;;; table_ID: '||table_id from sync_table where source_schema='&tblOwner' and source_table='&tblName';
+
 var tbl_id number;
 var src_trg varchar2(50);
 var src_log varchar2(50);
