@@ -2,25 +2,43 @@ import subprocess
 import requests
 import time
 import sys, getopt
+import re
 from oraJobGlobalVars import dbs
 
+# The gloval variables
+dbName =''
+jobName = ''
+jobCat = ''
+cmdLine = ''
+
 def run_sqlplus(dbN, strSQL):
+    global dbName 
+    global jobName 
+    global jobCat 
+    global cmdLine 
     dbN="DPRD"
     uName=dbs.get(dbN).get("user")
     pwd=dbs.get(dbN).get("pwd")
     url="//"+dbs.get(dbN).get("url")
 
     sqlScript = strSQL + "\n"  \
-#                "select sysdate from dual;\n"  \
                 "exit;\n"
 
 #    p = subprocess.Popen(['sqlplus','/nolog'],stdin=subprocess.PIPE,
     p = subprocess.Popen(['sqlplus',uName+"/"+pwd+"@"+url],stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,stderr=subprocess.PIPE)
     (stdout,stderr) = p.communicate(sqlScript.encode('utf-8'))
-    stdout_lines = stdout.decode('utf-8').split("\n")
-    for line in stdout_lines:
-        print(line)
+    #print(stdout)
+ #   stdout_lines = stdout.decode('utf-8').split("\n")
+    stdout_lines = stdout.decode('utf-8')
+    
+    print(stdout_lines)
+    if re.search("ORA-|SP2-", stdout_lines):
+        print("errors found!")
+        sendMatric("jobStatus", dbName, jobCat, jobName, 1)
+    else:
+        print("clean!")
+        sendMatric("jobStatus", dbName, jobCat, jobName, 0)
 
     print(stderr)
     return stdout_lines
@@ -46,12 +64,12 @@ def sendMatric(keyNam, db, cat, job, val):
     return
 
 
-def main():
-    dbName =''
-    jobName = ''
-    jobCat = ''
-    cmdLine = ''
 
+def main():
+    global dbName 
+    global jobName 
+    global jobCat 
+    global cmdLine 
     try:
         opts, args = getopt.getopt(sys.argv[1:],"hd:j:c:l:",["dbName","jobName","jobCat","cmdLine"])
     except getopt.GetoptError:

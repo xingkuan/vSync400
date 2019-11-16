@@ -4,6 +4,11 @@ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$ORACLE_HOME
 export PATH=$PATH:$ORACLE_HOME:/opt/vertica/bin/
 export SQLPATH=$ORACLE_HOME
 
+#
+# Need rework [2018.08.15]:
+#  problem: "deleted in Oracle but not replicated to vertica" can lead to re-init 
+#
+
 DDLTBLLST=/tmp/VSYNC/DDLMOD.lst
 WRKDIR=/tmp/VSYNC
 # to Check if any data out of sync due to DDL change

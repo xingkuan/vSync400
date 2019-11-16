@@ -42,7 +42,7 @@ do
   # for convenience, did it in vSyncDataChk.sh
   # 3: re-sync the table
   tblID=`grep -v ^$ $TIDFILE|tr -dc '0-9'`
-  echo "to re-sync $tblID: $SSCH $TB of $DB"
+  echo "to re-sync $tblID: $SSCH $TBL of $DB"
   /home/jenadmin/vSync/SQL/initTbl.sh $tblID
   > $TIDFILE
 done
