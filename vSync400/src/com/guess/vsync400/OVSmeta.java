@@ -334,13 +334,14 @@ class OVSmeta {
    public void markStartTime() {
       Calendar cal = Calendar.getInstance();
       startMS = cal.getTimeInMillis();
+      
    }
    public void markEndTime() {
-      Calendar cal = Calendar.getInstance();
+	  Calendar cal = Calendar.getInstance();
       endMS = cal.getTimeInMillis();
    }
    
-   public void saveInitStats(String jobID) {
+   public void saveInitStats(String jobID, java.sql.Timestamp hostTS) {
 	  int duration =  (int) (endMS - startMS)/1000;
       ovLogger.info(label + " duration: " + duration + " seconds");
       
@@ -352,7 +353,7 @@ class OVSmeta {
       java.sql.Timestamp ts = new java.sql.Timestamp(System.currentTimeMillis()); 
       try {                     
          rRset.updateInt("LAST_INIT_DURATION", (int)((endMS - startMS)/1000));
-         rRset.updateTimestamp("TS_LAST_INIT",ts);
+         rRset.updateTimestamp("TS_LAST_INIT",hostTS);
          rRset.updateTimestamp("TS_LAST_AUDIT",ts);
          rRset.updateInt("AUD_SOURCE_RECORD_CNT",refreshCnt);     
          rRset.updateInt("AUD_TARGET_RECORD_CNT",refreshCnt);
@@ -364,16 +365,15 @@ class OVSmeta {
       }
    }
    
-   public void saveRefreshStats(String jobID) {
+   public void saveRefreshStats(String jobID, java.sql.Timestamp hostTS) {
 	   int duration = (int)(int)((endMS - startMS)/1000);
 
 	   metrix.sendMX("syncDuration,jobId="+jobID+",tblID="+srcTblAb7+"~"+tableID+" value="+duration+"\n");
 	   metrix.sendMX("syncCount,jobId="+jobID+",tblID="+srcTblAb7+"~"+tableID+" value="+refreshCnt+"\n");
-	   
-      java.sql.Timestamp ts = new java.sql.Timestamp(System.currentTimeMillis()); 
+
       try {                     
          rRset.updateInt("LAST_REFRESH_DURATION", duration);
-         rRset.updateTimestamp("TS_LAST_REFRESH",ts);
+         rRset.updateTimestamp("TS_LAST_REFRESH",hostTS);
          rRset.updateInt("REFRESH_CNT",refreshCnt);
         
          rRset.updateRow();

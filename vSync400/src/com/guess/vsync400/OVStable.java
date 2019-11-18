@@ -76,24 +76,14 @@ class OVStable {
          tblMeta.setCurrentState(1);   // set current state to initializing
          tblMeta.markStartTime();
          try {
-            tblTgt.truncate();
-            ovLogger.info("... Truncated tgt: " + tblMeta.getTgtTable() + "Job " + jobID);
-            tblSrc.truncateLog();
-            ovLogger.info("... Truncated src log: " + tblMeta.getLogTable() + "Job " + jobID);
-            
-            if (tblMeta.getRefreshType() == 4) {  //07/14: <add this comment only> full refresh
-               tblSrc.setTriggerOff();
-               ovLogger.info("Type4 refrsh. Disable trigger. tblID: " + tableID + ". Job " + jobID);
-            } else {
-               tblSrc.setTriggerOn();
-               ovLogger.info("Typex refrsh. Enable trigger. tblID: " + tableID + ". Job " + jobID);
-            }
-            
 //TOTO: Change back, DEBUG USE
             tblSrc.initSrcQuery("");
 //            tblSrc.initSrcQuery("where rowid='AAAptlAAiAAJyJ3AAF'");
             
             ovLogger.info("src query initialized. tblID: " + tableID +". Job " + jobID );
+//2019.11.18, John:
+            java.sql.Timestamp hostTS = tblSrc.getHostTS();
+            
             tblTgt.setSrcRset(tblSrc.getSrcResultSet());
             recordCnt=tblTgt.initLoadType1();
 
@@ -108,7 +98,7 @@ class OVStable {
             ovLogger.info("Refreshed tblID: " + tableID + ". JobID: " + jobID);
             
             tblMeta.markEndTime();
-            tblMeta.saveInitStats(jobID);
+            tblMeta.saveInitStats(jobID, hostTS);
 
             if (recordCnt < 0) {
                tblMeta.setCurrentState(7);   //broken - suspended
@@ -124,7 +114,7 @@ class OVStable {
                  try {
                     tblTgt.rollback();
                     tblSrc.rollback();
-			        tblSrc.setTriggerOff(); 
+// .			        tblSrc.setTriggerOff(); 
                    tblMeta.setCurrentState(0);
                  } catch(SQLException e) {
                     ovLogger.error("JobID: " + jobID + ", tblID: " + tableID + e.getMessage());
@@ -151,7 +141,7 @@ class OVStable {
          tblMeta.markStartTime();
          try {
             tblTgt.truncate();
-            tblSrc.truncateLog();
+// .            tblSrc.truncateLog();
             tblSrc.setTriggerOn();
          } catch (SQLException e) {
 
@@ -226,6 +216,9 @@ class OVStable {
          try {
             tblSrc.initSrcLogQuery();
 
+          //2019.11.18, John:
+            java.sql.Timestamp hostTS = tblSrc.getHostTS();
+
             tblTgt.setSrcRset(tblSrc.getSrcResultSet());
             tblTgt.dropStaleRecords();
             
@@ -245,7 +238,7 @@ class OVStable {
             tblMeta.markEndTime();
 
             tblMeta.setRefreshCnt(tblTgt.getRefreshCnt());
-            tblMeta.saveRefreshStats(jobID);
+            tblMeta.saveRefreshStats(jobID, hostTS);
 
             tblSrc.delConsumedLog();
             tblTgt.commit();
@@ -295,8 +288,8 @@ class OVStable {
          tblMeta.setCurrentState(0);   // set current state to initializing
          tblMeta.markStartTime();
          try {
-            tblSrc.truncateLog();
-            tblSrc.setTriggerOff();
+// .            tblSrc.truncateLog();
+// .            tblSrc.setTriggerOff();
             tblSrc.commit();
             //System.out.println(label + "Table stopped");
             ovLogger.info("Log for " + tableID + " stopped");

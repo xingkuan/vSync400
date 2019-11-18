@@ -89,13 +89,13 @@ public class RegisterTbl400 {
           
           //For sync_table
           String sqlRepoDML1 = "insert into VERTSNAP.SYNC_TABLE\r\n" + 
-            		"  (SOURCE_SCHEMA, TARGET_SCHEMA, SOURCE_TABLE, TARGET_TABLE, CURR_STATE, TABLE_WEIGHT, TABLE_ID,\n" + 
-            		"   SOURCE_TRIGGER_NAME, T_ORDER, ORA_DELIMITER, EXP_TYPE, EXP_TIMEOUT, VERT_DELIMITER, PARTITIONED,\n" + 
-            		"   SOURCE_LOG_TABLE, TARGET_PK, ERR_CNT, ERR_LIM, source_db_id, target_db_id, pool_id, refresh_type)\n" + 
-            		"values \n" +
-            		"  ('" + srcSch +"', '" + tgtSch + "', '" + srcTbl + "', " + tgtTbl + "', 0, 1, " + tblID + ", \n" +
+            		"  (SOURCE_SCHEMA, TARGET_SCHEMA, SOURCE_TABLE, TARGET_TABLE, CURR_STATE, TABLE_WEIGHT, TABLE_ID,\r\n" + 
+            		"   SOURCE_TRIGGER_NAME, T_ORDER, ORA_DELIMITER, EXP_TYPE, EXP_TIMEOUT, VERT_DELIMITER, PARTITIONED,\r\n" + 
+            		"   SOURCE_LOG_TABLE, TARGET_PK, ERR_CNT, ERR_LIM, source_db_id, target_db_id, pool_id, refresh_type)\r\n" + 
+            		"values \r\n" +
+            		"  ('" + srcSch +"', '" + tgtSch + "', '" + srcTbl + "', '" + tgtTbl + "', 0, 1, " + tblID + ", \r\n" +
             		"  '',  '', '|', 1, 500, '|', 'N', " +    // no SOURCE_TRIGGER_NAME
-            		"    'JOHNLEE2.QSQJRN', 'DB2RRN', 0, 5, " + srcDBid + ", " + tgtDBid + ", " + poolID + ", " + refType + ")\n;";           //SOURCE_LOG_TABLE contains JOURNAL info	
+            		"    'JOHNLEE2.QSQJRN', 'DB2RRN', 0, 5, " + srcDBid + ", " + tgtDBid + ", " + poolID + ", " + refType + ")\r\n;";           //SOURCE_LOG_TABLE contains JOURNAL info	
           System.out.println(sqlRepoDML1);
           repoInsTbl.write(sqlRepoDML1);
           
@@ -167,7 +167,7 @@ public class RegisterTbl400 {
     	  verticaDDL.write(sqlDDLv);
 
     	  fieldCnt++;
-    	  sqlRepoDMLfield = sqlRepoDMLTemp + fieldCnt + ", "+ tblID + ", 'RRN(" + srcTbl + ")', 'DB2RRN', " 
+    	  sqlRepoDMLfield = sqlRepoDMLTemp + fieldCnt + ", "+ tblID + ", 'RRN(" + srcTbl + ") as DB2RRN', 'DB2RRN', " 
     			  + " 'nvl(rrn( " + srcTbl + "), NULL)', 1);"; 
     	  System.out.println(sqlRepoDMLfield);
     	  repoInsCols.write(sqlRepoDMLfield);
@@ -232,8 +232,8 @@ public class RegisterTbl400 {
       } else if (args.length == 10) {
     	  tblID = Integer.parseInt(args[9]);
       } else {
-          System.out.println("Usage:   RegisterTbl400 <s dbID> <s sch> <s tbl> <t dbID> <t sch> <t tbl> <p ID> <r type> <o path>");
-          System.out.println("   or:   RegisterTbl400 <s dbID> <s sch> <s tbl> <t dbID> <t sch> <t tbl> <p ID> <r type> <o path> <tbl ID>");
+          System.out.println("Usage:   RegisterTbl400 <sdbID> <ssch> <stbl> <tdbID> <tsch> <ttbl> <pID> <rtype> <opath>");
+          System.out.println("   or:   RegisterTbl400 <sdbID> <ssch> <stbl> <tdbID> <tsch> <ttbl> <pID> <rtype> <opath> <tblID>");
           System.out.println("E. g.:   RegisterTbl400 7 JOHNLEE2 TESTTBL1 4 DB2T TESTTBL1 11 1 c:\\Users\\johnlee\\");
           System.out.println("   or:   RegisterTbl400 7 JOHNLEE2 TESTTBL1 4 DB2T TESTTBL1 11 1 c:\\Users\\johnlee\\  285");
               

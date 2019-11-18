@@ -83,16 +83,22 @@ class OVSsrc {
          try {
             Class.forName("oracle.jdbc.OracleDriver"); 
          } catch(ClassNotFoundException e){
-            //System.err.println(label + " Driver error has occured");
-//.            ovLogger.log(label + " Driver error has occured");
             ovLogger.error(label + " Driver error has occured");
             e.printStackTrace();
 	         rtv = false;
             return rtv;
          }
-      } else {
-         //System.err.println(label + " source db type not supported");
-//.         ovLogger.log(label + " source db type not supported");
+      } else if (srcCred.getType() == 3) {
+          try {
+        	  Class.forName("com.ibm.as400.access.AS400JDBCDriver");  
+           } catch(ClassNotFoundException e){
+              ovLogger.error(label + " Driver error has occured");
+              e.printStackTrace();
+  	         rtv = false;
+              return rtv;
+           }
+    	  
+      }else {
          ovLogger.error(label + " source db type not supported");
          rtv=false;
          return rtv;
@@ -103,7 +109,6 @@ class OVSsrc {
          attempts++;
          
       try {
-//.         ovLogger.log(label + " conn attempt " + attempts);
          ovLogger.info(label + " conn attempt " + attempts);
          // this attempts a reset from a prior exception
          close();
@@ -185,6 +190,7 @@ class OVSsrc {
       ovLogger.info(label + " theshold log count: " + lc);
       return lc;
    }
+
    
    public int getRecordCount(){
       // counts and returns the number of records in the source table
@@ -224,6 +230,7 @@ class OVSsrc {
    public int getLogCnt() {
       return logCnt;
    }
+/* not for DB2 AS400, 2019.11.18 John
    public void setTriggerOff() throws SQLException {
       srcStmt.executeUpdate("alter trigger "  + tblMeta.getSrcTrigger() + " disable");       
       //System.out.println("========>>> trigger turned off");      
@@ -232,6 +239,31 @@ class OVSsrc {
       //System.out.println("truncate table " + tblMeta.getLogTable());
       srcStmt.executeUpdate("truncate table " + tblMeta.getSrcSchema() + "." +  tblMeta.getLogTable());
    }
+*/
+   
+   
+   public java.sql.Timestamp getHostTS(){
+	      int rtv;
+	      ResultSet lrRset;
+	      java.sql.Timestamp hostTS = null;
+	      
+	      try {
+	    	 srcStmt = srcConn.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
+
+	         lrRset=srcStmt.executeQuery("SELECT CURRENT TIMESTAMP FROM SYSIBM.SYSDUMMY1");
+	         if (lrRset.next()) {
+	            hostTS = lrRset.getTimestamp(1);  
+	      }
+	         lrRset.close();
+	         srcStmt.close();
+	      } catch(SQLException e) {
+	         ovLogger.error(label + " error during src audit: "+ e); 
+	      }
+
+	      return hostTS;
+   }
+
+   
    public void delConsumedLog() throws SQLException {
       srcStmt.executeUpdate(" DELETE FROM " +  tblMeta.getSrcSchema() + "." +  tblMeta.getLogTable() +  " where  snaptime = '01-JUN-1910' "); 
    }

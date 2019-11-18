@@ -109,7 +109,8 @@ long tmpLong;
       // insert records into batch
       while (srcRset.next()) {
          i=0;
-         RowIDs[curRecCnt]=srcRset.getString("rowid");
+         //RowIDs[curRecCnt]=srcRset.getString("rowid");
+         RowIDs[curRecCnt]=srcRset.getString("DB2RRN");
          try {
 
             for ( i=1; i<=tblMeta.getFldCnt(); i++ ) {
