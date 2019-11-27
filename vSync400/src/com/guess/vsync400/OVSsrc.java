@@ -138,15 +138,18 @@ class OVSsrc {
    public boolean initSrcQuery(String whereClause){
       // initializes the source recordset using the passed parameter whereClause as the where clause 
       boolean rtv=true;
-      
+      String sqlStmt = tblMeta.getSQLSelect() + " " + whereClause;
+      //String sqlStmt = "select * from johnlee2.testtbl2";
       try {
-         sRset=srcStmt.executeQuery(tblMeta.getSQLSelect() + " " + whereClause);
+    	 srcStmt = srcConn.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
+         sRset=srcStmt.executeQuery(sqlStmt);
       } catch(SQLException e) {
          ovLogger.error(label + " recordset not created");
          ovLogger.error(e);
          ovLogger.error(label + " \n\n\n" + tblMeta.getSQLSelect() + " " + whereClause + "\n\n\n");
          rtv=false;
       }
+      
       return rtv;
    }
    public boolean initSrcLogQuery() {
@@ -154,14 +157,24 @@ class OVSsrc {
       boolean rtv=true;
       
       try {
-         // set snaptime, count the number of records in the log table, then create recordset
-    	 String sqlStmt = "update " + tblMeta.getSrcSchema() + "." +  tblMeta.getLogTable()  + " set snaptime  = to_date('01-JUN-1910')  where  snaptime != '01-JUN-1910' ";
-         srcStmt.executeUpdate(sqlStmt);
-         sRset  = srcStmt.executeQuery( " select count(distinct M_ROW)   from   "  + tblMeta.getSrcSchema() + "." +  tblMeta.getLogTable() + " where  snaptime = '01-JUN-1910'  ");
-         sRset.next();
-         logCnt = Integer.parseInt(sRset.getString(1));
-         sRset.close();
-         sRset=srcStmt.executeQuery("select distinct M_ROW from " +   tblMeta.getSrcSchema() + "." +  tblMeta.getLogTable() + " where   snaptime = '01-JUN-1910'  ");
+    	  String jLibName = "JOHNLEE2";
+    	  String jName = "QSQJRN";
+    	  String rLib="", rName="";
+    	  String StrSQLRRN =  " select distinct(COUNT_OR_RRN) as RRN "
+    	              		+ " FROM table (Display_Journal('" + jLibName + "', '" + jName + "', "
+    	              		+ "   '" + rLib + "', '" + rName + "', "
+    	              		+ "   cast(null as TIMESTAMP), "    //pass-in the start timestamp;
+    	              		+ "   cast(null as decimal(21,0)), "    //starting SEQ #
+    	              		+ "   'R', "   //JOURNAL CODE: PT, DL, UP, PX?
+    	              		+ "   'UP,DL, PX',"    //JOURNAL entry ?
+    	              		+ "   '" + tblMeta.getSrcSchema() + "', '" + tblMeta.getSrcTable() + "', '*QDDS', '',"  //Object library, Object name, Object type, Object member
+    	              		+ "   '', '', ''"   //User, Job, Program
+    	              		+ ") ) as x"
+    	              		;
+    	              //		"  where ( ROWID ) in ( select distinct M_ROW " 
+    	              //		+ " from "  +  tblMeta.getSrcSchema() + "." + tblMeta.getLogTable() 
+    	              //		+ " where  snaptime = '01-JUN-1910'  )";    
+         sRset=srcStmt.executeQuery(StrSQLRRN);
       } catch(SQLException e) {
          ovLogger.error("src init failure" + e);
          rtv=false;
@@ -179,7 +192,7 @@ class OVSsrc {
          sRset  = srcStmt.executeQuery( " select count(distinct M_ROW)   from   "  + tblMeta.getSrcSchema() + "." +  tblMeta.getLogTable() );
          sRset.next();
          lc = Integer.parseInt(sRset.getString(1));
-         sRset.close();
+     //TODO:    sRset.close();
       } catch(SQLException e) {
          //System.out.println(label + " error during threshlogcnt");
 //.         ovLogger.log(label + " error during threshlogcnt");
@@ -264,9 +277,9 @@ class OVSsrc {
    }
 
    
-   public void delConsumedLog() throws SQLException {
-      srcStmt.executeUpdate(" DELETE FROM " +  tblMeta.getSrcSchema() + "." +  tblMeta.getLogTable() +  " where  snaptime = '01-JUN-1910' "); 
-   }
+//   public void delConsumedLog() throws SQLException {
+//      srcStmt.executeUpdate(" DELETE FROM " +  tblMeta.getSrcSchema() + "." +  tblMeta.getLogTable() +  " where  snaptime = '01-JUN-1910' "); 
+//   }
    public ResultSet getSrcResultSet() {
       return sRset;
    }

@@ -216,15 +216,63 @@ class OVStable {
          try {
             tblSrc.initSrcLogQuery();
 
-          //2019.11.18, John:
+            //2019.11.18, John:
             java.sql.Timestamp hostTS = tblSrc.getHostTS();
 
             tblTgt.setSrcRset(tblSrc.getSrcResultSet());
             tblTgt.dropStaleRecords();
+
+//Ideally, I would want to record the SEQUENCE_NUMBER, COUNT_OR_RRN; But for simplicity, 
+//  that is to make a simple WHERE clause of  
+//  " where rrn(tblName) in select COUNT_OR_RRN ... " 
+/*
+SELECT ENTRY_TIMESTAMP AS ENTRY,
+      JOURNAL_CODE AS JRNCODE,
+      CASE 
+         WHEN JOURNAL_ENTRY_TYPE = 'PT' THEN 'INSERT'
+         WHEN JOURNAL_ENTRY_TYPE = 'PX' THEN 'INSERT BY RRN'
+         WHEN JOURNAL_ENTRY_TYPE = 'UB' THEN 'UPDATE BEFORE'
+         WHEN JOURNAL_ENTRY_TYPE = 'UP' THEN 'UPDATE AFTER'
+         WHEN JOURNAL_ENTRY_TYPE = 'DL' THEN 'DELETE'
+         ELSE JOURNAL_ENTRY_TYPE 
+      END AS JRNTYPE,
+     SEQUENCE_NUMBER AS SEQNBR,
+     COUNT_OR_RRN as RRN,
+     ENTRY_TIMESTAMP
+ from table (Display_Journal(
+'ITHAB1JRN', 'B1JRNA',		-- Journal library and name
+'', '',				-- Receiver library and name
+CAST(null as TIMESTAMP),	-- Starting timestamp
+CAST(null as DECIMAL(21,0)),	-- Starting sequence number
+'',				-- Journal codes
+'',				-- Journal entries
+'MM510WRK','','','ECMCFAR',			-- Object library, Object name, Object type, Object member
+'',				-- User
+'',				-- Job
+''				-- Program
+) ) as x
+;
+*/
+String jLibName = "JOHNLEE2";
+String jName = "QSQJRN";
+String rLib="", rName="";
+            String whereStr = " where rrn(" + tblMeta.getSrcTable() + ") in (" 
+            		+ " select distinct(COUNT_OR_RRN) "
+            		+ " FROM table (Display_Journal('" + jLibName + "', '" + jName + "', "
+            		+ "   '" + rLib + "', '" + rName + "', "
+            		+ "   cast(null as TIMESTAMP), "    //pass-in the start timestamp;
+            		+ "   cast(null as decimal(21,0)), "    //starting SEQ #
+            		+ "   'R', "   //JOURNAL CODE: PT, DL, UP, PX?
+            		+ "   'UP,DL, PX',"    //JOURNAL entry ?
+            + "   '" + tblMeta.getSrcSchema() + "', '" + tblMeta.getSrcTable() + "', '*QDDS', '',"  //Object library, Object name, Object type, Object member
+      		+ "   '', '', ''"   //User, Job, Program
+      		+ ") ) as x)"
+;            
             
-            tblSrc.initSrcQuery("  where ( ROWID ) in ( select distinct M_ROW " 
-            		+ " from "  +  tblMeta.getSrcSchema() + "." + tblMeta.getLogTable() 
-            		+ " where  snaptime = '01-JUN-1910'  )" );  
+            //		"  where ( ROWID ) in ( select distinct M_ROW " 
+            //		+ " from "  +  tblMeta.getSrcSchema() + "." + tblMeta.getLogTable() 
+            //		+ " where  snaptime = '01-JUN-1910'  )";            
+            tblSrc.initSrcQuery(whereStr );  
             ovLogger.info("Source query initialized. tblID: " + tableID + " - " + tblMeta.getSrcDbDesc() );
             tblTgt.setSrcRset(tblSrc.getSrcResultSet());
             
@@ -240,8 +288,6 @@ class OVStable {
             tblMeta.setRefreshCnt(tblTgt.getRefreshCnt());
             tblMeta.saveRefreshStats(jobID, hostTS);
 
-            tblSrc.delConsumedLog();
-            tblTgt.commit();
             tblSrc.commit();
             ovLogger.info("tblID: " + tableID + ", " + tableID + " - " + tblMeta.getSrcDbDesc() + " commited" );
 

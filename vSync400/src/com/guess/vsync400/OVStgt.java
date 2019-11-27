@@ -356,13 +356,13 @@ long tmpLong;
          NeedsProcessing    = true;
          CurrentRecordCount++ ;
          TotalRecordsProcessed++ ;
-         DeleteTargetTable += "'" + srcRset.getString("M_ROW") + "'" ;
+         DeleteTargetTable += "'" + srcRset.getInt("RRN") + "'" ;
       }
       while (srcRset.next()) {
          TotalRecordsProcessed++ ;
          CurrentRecordCount++ ;
          NeedsProcessing    = true;
-         DeleteTargetTable += ", '" +  srcRset.getString("M_ROW") + "'" ;
+         DeleteTargetTable += ", '" +  srcRset.getInt("RRN") + "'" ;
          //if ( CurrentRecordCount == MaxInCount ) {
          if ( CurrentRecordCount == batchSize ) {
             DeleteTargetTable += ") " ;
@@ -379,7 +379,7 @@ long tmpLong;
                NeedsProcessing    = true;
                CurrentRecordCount++ ;
                TotalRecordsProcessed++ ;
-               DeleteTargetTable += "'" + srcRset.getString("M_ROW") + "'" ;
+               DeleteTargetTable += "'" + srcRset.getString("RRN") + "'" ;
             }
          }
       }
