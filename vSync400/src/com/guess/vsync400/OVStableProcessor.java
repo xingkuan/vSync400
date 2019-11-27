@@ -151,39 +151,6 @@ class OVStableProcessor {//. extends Thread {
       		break;
       }
  
-/* do not remove it yet. I need to make sure the above new codes covers the logic here.      
-      // test for refresh type trickle...   otherwise skip refresh  - refresh_type = 1, 2 or 3
-      if (rt==1 || rt==2 || rt==3) {
-         // test for poll interval
-//.         if ((ovTable.getLastRefresh().getTime() + (ovTable.getMinPollInterval() * 60000)) < cd.getTime()) {   //. JLEE, 07/14 shouldn't it be ">"?
-    	 // ... not going to rely on the interval anyway; instead, Jenkin schedule dictate the run. 
-            if (rt==2) {
-            //reload - test threshold
-               ovLogger.info("Testing Threshold for reload for tblID: " + ovTable.getTableID() + " tblName: " + ovTable.getTgtTableName());
-               ovLogger.info("  allowable limit: " + ovTable.getRecordCountThreshold());
-               rc=ovTable.getLogCnt();
-               ovLogger.info("Log record count is: " + rc);
-               if (rc> ovTable.getRecordCountThreshold()) {
-                  //System.out.println(label +"Threshold Exceeded - Reloading Table");
-                  ovLogger.info("Threshold Exceeded - Reloading Table");
-                  procStop();
-                  procInitDefault(tblID, jobID);
-                  flg=false;
-               }
-            }
-            if (rt==3) {     // loadswap 
-               rc=ovTable.getLogCnt();
-               if (rc>ovTable.getRecordCountThreshold()) {
-                  ovLogger.info("Threshold Exceeded - LoadSwaping Table " + tblID);
-                  tblLoadSwap();
-                  flg=false;
-               }
-            }
-      } else {
-         flg=false;
-      }
-*/
-      
       if (flg) {
          ovTable.tblRefresh();
       } 

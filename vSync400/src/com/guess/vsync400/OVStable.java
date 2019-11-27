@@ -210,17 +210,19 @@ class OVStable {
       srcRC=0;
       tgtRC=0;
       
+      int lastJournalSeqNum;
+      
       if (tblMeta.getCurrState() == 2 || tblMeta.getCurrState() == 5) {
          tblMeta.setCurrentState(3);   // set current state to being refreshed
          tblMeta.markStartTime();
          try {
             tblSrc.initSrcLogQuery();
 
-            //2019.11.18, John:
+            //2019.11.18:
             java.sql.Timestamp hostTS = tblSrc.getHostTS();
 
             tblTgt.setSrcRset(tblSrc.getSrcResultSet());
-            tblTgt.dropStaleRecords();
+            lastJournalSeqNum=tblTgt.dropStaleRecords();
 
 //Ideally, I would want to record the SEQUENCE_NUMBER, COUNT_OR_RRN; But for simplicity, 
 //  that is to make a simple WHERE clause of  
@@ -256,17 +258,19 @@ CAST(null as DECIMAL(21,0)),	-- Starting sequence number
 String jLibName = "JOHNLEE2";
 String jName = "QSQJRN";
 String rLib="", rName="";
+String strTS = new SimpleDateFormat("yyyy-MM-dd-HH.mm.ss.SSSSSS").format(tblMeta.getLastRefresh());
+
             String whereStr = " where rrn(" + tblMeta.getSrcTable() + ") in (" 
             		+ " select distinct(COUNT_OR_RRN) "
             		+ " FROM table (Display_Journal('" + jLibName + "', '" + jName + "', "
             		+ "   '" + rLib + "', '" + rName + "', "
-            		+ "   cast(null as TIMESTAMP), "    //pass-in the start timestamp;
+            		+ "   cast('" + strTS +"' as TIMESTAMP), "    //pass-in the start timestamp;
             		+ "   cast(null as decimal(21,0)), "    //starting SEQ #
             		+ "   'R', "   //JOURNAL CODE: PT, DL, UP, PX?
-            		+ "   'UP,DL, PX',"    //JOURNAL entry ?
+            		+ "   'UP,DL,PT,PX',"    //JOURNAL entry ?
             + "   '" + tblMeta.getSrcSchema() + "', '" + tblMeta.getSrcTable() + "', '*QDDS', '',"  //Object library, Object name, Object type, Object member
       		+ "   '', '', ''"   //User, Job, Program
-      		+ ") ) as x)"
+      		+ ") ) as x where SEQUENCE_NUMBER <= " + lastJournalSeqNum + " )"
 ;            
             
             //		"  where ( ROWID ) in ( select distinct M_ROW " 

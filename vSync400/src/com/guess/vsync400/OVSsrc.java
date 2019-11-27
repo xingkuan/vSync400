@@ -160,16 +160,17 @@ class OVSsrc {
     	  String jLibName = "JOHNLEE2";
     	  String jName = "QSQJRN";
     	  String rLib="", rName="";
-    	  String StrSQLRRN =  " select distinct(COUNT_OR_RRN) as RRN "
+    	   String strTS = new SimpleDateFormat("yyyy-MM-dd-HH.mm.ss.SSSSSS").format(tblMeta.getLastRefresh());
+    	  String StrSQLRRN =  " select COUNT_OR_RRN as RRN,  SEQUENCE_NUMBER AS SEQNBR"
     	              		+ " FROM table (Display_Journal('" + jLibName + "', '" + jName + "', "
     	              		+ "   '" + rLib + "', '" + rName + "', "
-    	              		+ "   cast(null as TIMESTAMP), "    //pass-in the start timestamp;
+    	              		+ "   cast('" + strTS +"' as TIMESTAMP), "    //pass-in the start timestamp;
     	              		+ "   cast(null as decimal(21,0)), "    //starting SEQ #
     	              		+ "   'R', "   //JOURNAL CODE: PT, DL, UP, PX?
-    	              		+ "   'UP,DL, PX',"    //JOURNAL entry ?
+    	              		+ "   'UP,DL,PT,PX',"    //JOURNAL entry ?
     	              		+ "   '" + tblMeta.getSrcSchema() + "', '" + tblMeta.getSrcTable() + "', '*QDDS', '',"  //Object library, Object name, Object type, Object member
     	              		+ "   '', '', ''"   //User, Job, Program
-    	              		+ ") ) as x"
+    	              		+ ") ) as x order by 2 asc"
     	              		;
     	              //		"  where ( ROWID ) in ( select distinct M_ROW " 
     	              //		+ " from "  +  tblMeta.getSrcSchema() + "." + tblMeta.getLogTable() 

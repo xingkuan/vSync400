@@ -337,13 +337,15 @@ long tmpLong;
       return refreshCnt;
    }
 
-   public void dropStaleRecords() throws SQLException {
+   public int dropStaleRecords() throws SQLException {
       // deletes records to be replaced in target table
       boolean NeedsProcessing;
       int TotalRecordsProcessed;
       int CurrentRecordCount;
       int lRefreshCnt;
       String DeleteTargetTable = new String(""); 
+      
+      int journalSeqNum=0;
       
       TotalRecordsProcessed = 0;
       CurrentRecordCount = 0;
@@ -357,12 +359,16 @@ long tmpLong;
          CurrentRecordCount++ ;
          TotalRecordsProcessed++ ;
          DeleteTargetTable += "'" + srcRset.getInt("RRN") + "'" ;
+         journalSeqNum = srcRset.getInt("SEQNBR");
       }
       while (srcRset.next()) {
          TotalRecordsProcessed++ ;
          CurrentRecordCount++ ;
          NeedsProcessing    = true;
          DeleteTargetTable += ", '" +  srcRset.getInt("RRN") + "'" ;
+
+         journalSeqNum = srcRset.getInt("SEQNBR");
+
          //if ( CurrentRecordCount == MaxInCount ) {
          if ( CurrentRecordCount == batchSize ) {
             DeleteTargetTable += ") " ;
@@ -380,6 +386,8 @@ long tmpLong;
                CurrentRecordCount++ ;
                TotalRecordsProcessed++ ;
                DeleteTargetTable += "'" + srcRset.getString("RRN") + "'" ;
+
+               journalSeqNum = srcRset.getInt("SEQNBR");
             }
          }
       }
@@ -392,6 +400,8 @@ long tmpLong;
          ovLogger.info(label +  " deleted - " + TotalRecordsProcessed );
       }
       srcRset.close();
+      
+      return journalSeqNum;
    }
    
    private void putROWID(String rowid) {
