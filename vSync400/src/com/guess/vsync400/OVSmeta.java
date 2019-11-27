@@ -354,6 +354,7 @@ class OVSmeta {
       try {                     
          rRset.updateInt("LAST_INIT_DURATION", (int)((endMS - startMS)/1000));
          rRset.updateTimestamp("TS_LAST_INIT",hostTS);
+         rRset.updateTimestamp("TS_LAST_REFRESH",hostTS);
          rRset.updateTimestamp("TS_LAST_AUDIT",ts);
          rRset.updateInt("AUD_SOURCE_RECORD_CNT",refreshCnt);     
          rRset.updateInt("AUD_TARGET_RECORD_CNT",refreshCnt);

@@ -98,7 +98,7 @@ class OVStable {
             ovLogger.info("Refreshed tblID: " + tableID + ". JobID: " + jobID);
             
             tblMeta.markEndTime();
-            tblMeta.saveInitStats(jobID, hostTS);
+            tblMeta.saveInitStats(jobID, hostTS); 
 
             if (recordCnt < 0) {
                tblMeta.setCurrentState(7);   //broken - suspended
@@ -255,8 +255,13 @@ CAST(null as DECIMAL(21,0)),	-- Starting sequence number
 ) ) as x
 ;
 */
-String jLibName = "JOHNLEE2";
-String jName = "QSQJRN";
+      	  String srcLog = tblMeta.getLogTable();
+      	  String[] res = srcLog.split("[.]", 0);
+      	  //String jLibName = "JOHNLEE2";
+      	  //String jName = "QSQJRN";
+      	  String jLibName = res[0];
+      	  String jName = res[1];
+            
 String rLib="", rName="";
 String strTS = new SimpleDateFormat("yyyy-MM-dd-HH.mm.ss.SSSSSS").format(tblMeta.getLastRefresh());
 

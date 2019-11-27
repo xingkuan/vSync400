@@ -157,8 +157,13 @@ class OVSsrc {
       boolean rtv=true;
       
       try {
-    	  String jLibName = "JOHNLEE2";
-    	  String jName = "QSQJRN";
+    	  String srcLog = tblMeta.getLogTable();
+    	  String[] res = srcLog.split("[.]", 0);
+    	  //String jLibName = "JOHNLEE2";
+    	  //String jName = "QSQJRN";
+    	  String jLibName = res[0];
+    	  String jName = res[1];
+    	  
     	  String rLib="", rName="";
     	   String strTS = new SimpleDateFormat("yyyy-MM-dd-HH.mm.ss.SSSSSS").format(tblMeta.getLastRefresh());
     	  String StrSQLRRN =  " select COUNT_OR_RRN as RRN,  SEQUENCE_NUMBER AS SEQNBR"
