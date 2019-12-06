@@ -29,7 +29,7 @@ SRCDBURL=$(fun_getDBConn $SRCDB)
 echo unregister  $SRCSCH $TBL
 read -p "pre check. Press enter to continue ..."
 
-sqlplus /nolog @unreg_tbl.sql $SRCDBURL $SRCDBID $SRCSCH $TGTSCH $TBL
+sqlplus /nolog @unregTbl400.sql $SRCDBURL $SRCDBID $SRCSCH $TGTSCH $TBL
 
 VHOST=vertx1
 VUSER=dbadmin

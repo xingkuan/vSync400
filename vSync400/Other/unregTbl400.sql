@@ -3,11 +3,13 @@ define tblName = &5
 --# the 4th parameter, TGTSCH, is not used here.
 -- Important Note:
 --     Please provide the DB tns name/user/passwd for both the source and meta repository
+--     (for DB2/AS400, that is not needed. But we keep it here for now.)
 -- | srcDBtns = 'JOTPP';    -- JOTPP prod
 -- |            system/cal618
 -- | srcDBtns = 'CRMP65'   -- the clone db for test
 -- | srcDBtns = 'CRMP64'
 -- |            system/lanchong
+-- | DB2/AS400 = 'DB2T'  
 --# define srcDBtns = 'CRMP64'
 --# define srcDBuser = 'system';
 --# define srcDBpwd = 'lanchong';
@@ -26,6 +28,7 @@ define tgtDBid = 4     -- not used
 -- VertX     4
 -- JOTPP     5
 -- VERTR     6
+-- DB2T      7
 
 set heading off;
 set feedback off;
@@ -38,27 +41,14 @@ connect &repDBuser/&repDBpwd@&repDBtns;
 select 'sdb_id: '||source_db_id||';;;; pool_id: '||pool_id||';;;; table_ID: '||table_id from sync_table where source_schema='&tblOwner' and source_table='&tblName';
 
 var tbl_id number;
-var src_trg varchar2(50);
-var src_log varchar2(50);
 begin
-  select table_id, source_trigger_name, source_log_table into :tbl_id,:src_trg,:src_log from sync_table
+  select table_id into :tbl_id from sync_table
   where source_schema='&tblOwner' and source_table='&tblName';
 end;
 /
 
 print :tbl_id
-print :src_trg
-print :src_log
-Accept foo PROMPT "Sure want to drop vsync for: &tblOwner &tblName? Press [Enter]-key to grant ... "
-connect &srcDBurl;
-select :tbl_id from dual;
-spool /tmp/tempVSYNC.sql
-select 'drop trigger '||:src_trg||';' from dual;
-select 'drop table &tblOwner'||'.'||:src_log||';' from dual;
-spool off
---alter TRIGGER :src_trg disable;
-@/tmp/tempVSYNC.sql
-
+Accept foo PROMPT "Sure want to drop vSync for: &tblOwner &tblName? Press [Enter]-key to continue ... "
 connect &repDBuser/&repDBpwd@&repDBtns;
 delete VERTSNAP.SYNC_TABLE_FIELD 
 where table_id=:tbl_id

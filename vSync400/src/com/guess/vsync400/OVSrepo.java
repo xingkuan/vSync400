@@ -80,27 +80,7 @@ class OVSrepo {
       return dbCred[dbid];
    }
    
-//.   public void putAuditRequest(int tableID){
-//.      putMstrRequest(tableID, 4, 2);
-//.   } 
-//.   
-//.   private void putMstrRequest(int objID, int request, int cmd_type) {
-//.      // creates an audit request entry into table's cmd queue
-//.      Connection lrepConn;
-//.      Statement lrepStmt;
-//.      try {
-//.         lrepConn = DriverManager.getConnection(dbCred[0].getURL(), dbCred[0].getUser(), dbCred[0].getPWD());
-//.         //lrepConn.setAutoCommit(false);
-//.         lrepStmt = lrepConn.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_UPDATABLE);
-//.         lrepStmt.executeUpdate(" insert into " + dbCred[0].getCmdQueue()  + " (object_id, request, cmd_type) values (" 
-//.        		 + objID + "," + request + "," + cmd_type + ")" );
-//.         lrepConn.commit();
-//.         lrepStmt.close();
-//.         lrepConn.close();
-//.      } catch(SQLException e) {
-//.         //ovLogger.log(label + e.getMessage());
- //.     }
- //.  }
+
    
    /*
     * 07/24: return list of tbls belongs to a pool
@@ -151,4 +131,41 @@ class OVSrepo {
    public List<Integer> getTableIDsAll() {
 	   return getTblsByPoolID(-1);
    }
+public boolean isNewTblID(int tblID) {
+    String strSQL;
+    OVScred repCred = dbCred[0];
+    boolean rslt = true;
+    
+    strSQL = "select TABLE_ID from sync_table where table_id = " + tblID;
+	      
+	   try {
+        Class.forName("oracle.jdbc.OracleDriver"); 
+        repConn = DriverManager.getConnection(repCred.getURL(), repCred.getUser(), repCred.getPWD());
+        repConn.setAutoCommit(false);
+        repStmt = repConn.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_UPDATABLE);
+        rRset = repStmt.executeQuery(strSQL);
+        if(rRset.next()){
+        	rslt = false;
+         }
+     } catch(SQLException se){
+        ovLogger.error("OJDBC driver error has occured" + se);
+     }catch(Exception e){
+         //Handle errors for Class.forName
+     	ovLogger.error(e);
+      }finally {
+     	// make sure the resources are closed:
+     	 try{
+     		if(repStmt !=null)
+     			repStmt.close();
+     	 }catch(SQLException se2){
+     	 }
+          try{
+              if(repConn!=null)
+                 repConn.close();
+          }catch(SQLException se){
+          }
+      }
+	   
+	return rslt;
+}
  }    
