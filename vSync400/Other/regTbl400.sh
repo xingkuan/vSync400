@@ -2,7 +2,7 @@
 #
 # This is the main script for registering table for replication.
 #
-export VSYCNHOME=/home/jenadmin/vSync400/Java
+export VSYCNHOME=/home/dbadmin/vSync400/Java
 export CLASSPATH=$CLASSPATH:$VSYCNHOME/libs/log4j-api-2.7.jar:$VSYCNHOME/libs/log4j-core-2.7.jar:$VSYCNHOME/libs/jt400.jar:$VSYCNHOME/libs/vertica-jdbc-8.1.1-0.jar
 cd $VSYCNHOME
 
@@ -19,13 +19,13 @@ OUTDIR=$10
 
 VHOST=vertu01
 VUSER=dbadmin
-VPASS="3Astere**s"
-define repDB = 'RMAN01';
-define repUser = 'vertsnap';
-define repPwd = 'BAtm0B1L#';
+VPASS='3Astere**s'
+repDB='RMAN01';
+repUser='vertsnap';
+repPwd='BAtm0B1L#';
 
-echo "source table:   $SRCSCH.$SCHTBL"
-echo "source journal: $SRCSCH.$SCHTBL"
+echo "source table:   $SRCSCH.$SRCTBL"
+echo "source journal: $SRCJRNL"
 echo "target table:   $TGTSCH.$TGTTBL"
 echo "pool ID:        $POOLID"
 
