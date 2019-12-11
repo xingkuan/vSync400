@@ -237,7 +237,8 @@ public class RegisterTbl400 {
           System.out.println("   or:   RegisterTbl400 <sdbID> <ssch> <stbl> <jrnl> <tdbID> <tsch> <ttbl> <pID> <rtype> <opath> <tblID>");
           System.out.println("E. g.:   RegisterTbl400 7 JOHNLEE2 TESTTBL1 JOHNLEE2.QSQJRN 4 DB2T TESTTBL1 11 1 c:\\Users\\johnlee\\");
           System.out.println("   or:   RegisterTbl400 7 JOHNLEE2 TESTTBL1 JOHNLEE2.QSQJRN 4 DB2T TESTTBL1 11 1 c:\\Users\\johnlee\\  285");
-              
+          // test parms: 7 JOHNLEE2 TESTTBL2 JOHNLEE2.QSQJRN 4 test TESTTBL2 11 1 c:\Users\johnlee\ 501
+          // test parms: 7 JDAADM INVORD JDAADM.INVORD 4 test INVORD 11 1 c:\Users\johnlee\ 
           return ;
       } 
 
