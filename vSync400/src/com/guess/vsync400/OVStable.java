@@ -265,7 +265,7 @@ CAST(null as DECIMAL(21,0)),	-- Starting sequence number
 String rLib="", rName="";
 String strTS = new SimpleDateFormat("yyyy-MM-dd-HH.mm.ss.SSSSSS").format(tblMeta.getLastRefresh());
 
-            String whereStr = " where rrn(" + tblMeta.getSrcTable() + ") in (" 
+            String whereStr = " where rrn(a) in (" 
             		+ " select distinct(COUNT_OR_RRN) "
             		+ " FROM table (Display_Journal('" + jLibName + "', '" + jName + "', "
             		+ "   '" + rLib + "', '" + rName + "', "

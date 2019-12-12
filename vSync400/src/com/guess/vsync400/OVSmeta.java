@@ -314,8 +314,8 @@ class OVSmeta {
       }
       lrRset.close();
       sqlCopyTarget += ") FROM LOCAL STDIN DELIMITER " + vrtDelimiter + "DIRECT ENFORCELENGTH";
-      sqlCopySource += "\nfrom " + srcSchema + "." + srcTable;
-      sqlSelectSource += " \n from " + srcSchema + "." + srcTable;
+      sqlCopySource += "\nfrom " + srcSchema + "." + srcTable + " a";
+      sqlSelectSource += " \n from " + srcSchema + "." + srcTable + " a";
       sqlInsertTarget += ") \n    Values ( " ;
       sqlInsertTargetAlt += ") \n    Values ( " ;
       for ( i=1; i<=fldCnt; i++ ) {

@@ -122,7 +122,7 @@ public class RegisterTbl400 {
         	  sDataType = sRset.getString("data_type");
         	  
         	  if (sDataType.equals("VARCHAR")) {
-        		  strDataSpec = "VARCHAR2(" + sRset.getInt("length") + ")"; 
+        		  strDataSpec = "VARCHAR2(" + 2 * sRset.getInt("length") + ")";   //simple double it to handle UTF string
 
         		  xType = 1;
         		  xForm ="nvl(" + sRset.getString("column_name") + ", NULL)" ;
@@ -144,7 +144,7 @@ public class RegisterTbl400 {
 		        	  //xForm = ;
 	        	  }
         	  } else if (sDataType.equals("CHAR")) {
-        		  strDataSpec = "CHAR(" +  sRset.getInt("length") + ")";
+        		  strDataSpec = "CHAR(" +  2 * sRset.getInt("length") + ")";   //simple double it to handle UTF string
         		  
         		  xType = 1;
         		  xForm ="nvl(" + sRset.getString("column_name") + "), NULL)" ;
@@ -169,8 +169,8 @@ public class RegisterTbl400 {
     	  verticaDDL.write(sqlDDLv);
 
     	  fieldCnt++;
-    	  sqlRepoDMLfield = sqlRepoDMLTemp + fieldCnt + ", "+ tblID + ", 'RRN(" + srcTbl + ") as DB2RRN', 'DB2RRN', " 
-    			  + " 'nvl(rrn( " + srcTbl + "), NULL)', 1);"; 
+    	  sqlRepoDMLfield = sqlRepoDMLTemp + fieldCnt + ", "+ tblID + ", 'RRN(a) as DB2RRN', 'DB2RRN', " 
+    			  + " 'nvl(rrn(a), NULL)', 1);"; 
     	  System.out.println(sqlRepoDMLfield);
     	  repoInsCols.write(sqlRepoDMLfield);
     	  
@@ -223,7 +223,7 @@ public class RegisterTbl400 {
     	  ovLogger.error(e.getMessage());
       }
 
-	   return tblID;
+	   return tblID+1;
    }
 	
 	public static void main(String[] args) throws IOException {
