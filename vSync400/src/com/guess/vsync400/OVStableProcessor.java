@@ -1,6 +1,7 @@
 package com.guess.vsync400;
 
 import java.io.*;
+import java.sql.SQLException;
 import java.util.*;
 
 import org.apache.logging.log4j.LogManager;
@@ -152,7 +153,12 @@ class OVStableProcessor {//. extends Thread {
       }
  
       if (flg) {
-         ovTable.tblRefresh();
+         try {
+			ovTable.tblRefresh();
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
       } 
       
    }

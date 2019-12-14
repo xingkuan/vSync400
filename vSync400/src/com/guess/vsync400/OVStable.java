@@ -200,7 +200,7 @@ class OVStable {
     }
    }
 
-   public boolean tblRefresh() {
+   public boolean tblRefresh() throws SQLException {
       boolean rtv=true;
       int recordCnt;
       int errorCnt;
@@ -211,50 +211,18 @@ class OVStable {
       tgtRC=0;
       
       int lastJournalSeqNum;
-      
+
       if (tblMeta.getCurrState() == 2 || tblMeta.getCurrState() == 5) {
-         tblMeta.setCurrentState(3);   // set current state to being refreshed
-         tblMeta.markStartTime();
          try {
             tblSrc.initSrcLogQuery();
 
             //2019.11.18:
             java.sql.Timestamp hostTS = tblSrc.getHostTS();
 
-            tblTgt.setSrcRset(tblSrc.getSrcResultSet());
-            lastJournalSeqNum=tblTgt.dropStaleRecords();
 
-//Ideally, I would want to record the SEQUENCE_NUMBER, COUNT_OR_RRN; But for simplicity, 
-//  that is to make a simple WHERE clause of  
-//  " where rrn(tblName) in select COUNT_OR_RRN ... " 
-/*
-SELECT ENTRY_TIMESTAMP AS ENTRY,
-      JOURNAL_CODE AS JRNCODE,
-      CASE 
-         WHEN JOURNAL_ENTRY_TYPE = 'PT' THEN 'INSERT'
-         WHEN JOURNAL_ENTRY_TYPE = 'PX' THEN 'INSERT BY RRN'
-         WHEN JOURNAL_ENTRY_TYPE = 'UB' THEN 'UPDATE BEFORE'
-         WHEN JOURNAL_ENTRY_TYPE = 'UP' THEN 'UPDATE AFTER'
-         WHEN JOURNAL_ENTRY_TYPE = 'DL' THEN 'DELETE'
-         ELSE JOURNAL_ENTRY_TYPE 
-      END AS JRNTYPE,
-     SEQUENCE_NUMBER AS SEQNBR,
-     COUNT_OR_RRN as RRN,
-     ENTRY_TIMESTAMP
- from table (Display_Journal(
-'ITHAB1JRN', 'B1JRNA',		-- Journal library and name
-'', '',				-- Receiver library and name
-CAST(null as TIMESTAMP),	-- Starting timestamp
-CAST(null as DECIMAL(21,0)),	-- Starting sequence number
-'',				-- Journal codes
-'',				-- Journal entries
-'MM510WRK','','','ECMCFAR',			-- Object library, Object name, Object type, Object member
-'',				-- User
-'',				-- Job
-''				-- Program
-) ) as x
-;
-*/
+
+            tblTgt.setSrcRset(tblSrc.getSrcResultSet());
+
       	  String srcLog = tblMeta.getLogTable();
       	  String[] res = srcLog.split("[.]", 0);
       	  //String jLibName = "JOHNLEE2";
@@ -264,8 +232,12 @@ CAST(null as DECIMAL(21,0)),	-- Starting sequence number
             
 String rLib="", rName="";
 String strTS = new SimpleDateFormat("yyyy-MM-dd-HH.mm.ss.SSSSSS").format(tblMeta.getLastRefresh());
+lastJournalSeqNum=tblTgt.dropStaleRecords();
+if(lastJournalSeqNum>0) {
+    tblMeta.setCurrentState(3);   // set current state to being refreshed
+    tblMeta.markStartTime();
 
-            String whereStr = " where rrn(a) in (" 
+    String whereStr = " where rrn(a) in (" 
             		+ " select distinct(COUNT_OR_RRN) "
             		+ " FROM table (Display_Journal('" + jLibName + "', '" + jName + "', "
             		+ "   '" + rLib + "', '" + rName + "', "
@@ -289,16 +261,20 @@ String strTS = new SimpleDateFormat("yyyy-MM-dd-HH.mm.ss.SSSSSS").format(tblMeta
             ovLogger.info("Refreshed tblID: " + tableID + ", record Count: " + recordCnt);
 
             errorCnt=tblTgt.getErrCnt();
-            if(errorCnt>0)
+            if(errorCnt>0) {
             	metrix.sendMX("errCnt,jobId="+jobID+",tblID="+srcTblAb7+"~"+tableID+" value=" + errorCnt + "\n");
-
+            }
+            
             tblMeta.markEndTime();
 
             tblMeta.setRefreshCnt(tblTgt.getRefreshCnt());
             tblMeta.saveRefreshStats(jobID, hostTS);
 
+            metrix.sendMX("JournalSeq,jobId="+jobID+",tblID="+srcTblAb7+"~"+tableID+" value=" + lastJournalSeqNum + "\n");
+            
+
             tblSrc.commit();
-            ovLogger.info("tblID: " + tableID + ", " + tableID + " - " + tblMeta.getSrcDbDesc() + " commited" );
+     	   ovLogger.info("tblID: " + tableID + ", " + tableID + " - " + tblMeta.getSrcDbDesc() + " commited" );
 
             if (recordCnt < 0) {
                tblMeta.setCurrentState(7);   //broken - suspended
@@ -309,6 +285,9 @@ String strTS = new SimpleDateFormat("yyyy-MM-dd-HH.mm.ss.SSSSSS").format(tblMeta
                //System.out.println(label + " <<<<<<<<<<<<  refresh successfull");
                ovLogger.info("JobID: " + jobID + ", tblID: " + tableID + " <<<<<  refresh successfull");
             }
+}else {
+ ovLogger.info("tblID: " + tableID + ", " + tblMeta.getSrcSchema() + "', '" + tblMeta.getSrcTable() + " has no change since last sync." );
+}
          } catch (SQLException e) {
             rtv=false;
 			ovLogger.error("TblRefresh() failed for tblID: " + tableID + e.getMessage());
@@ -321,9 +300,7 @@ String strTS = new SimpleDateFormat("yyyy-MM-dd-HH.mm.ss.SSSSSS").format(tblMeta
                   ovLogger.error(" tblID: " + tableID + " - " + tblMeta.getSrcDbDesc()  
                     + " exception handling tgt rolled back " );
                   tblSrc.rollback();
-               //2018.02.02 John: don't turn it off. The next run will resume!
- 		       //   tblSrc.setTriggerOff(); 
-               //   tblMeta.setCurrentState(0);
+
                   tblMeta.setCurrentState(5);
                } catch(SQLException e) {
                   ovLogger.error("JobID: " + jobID + ", tblID: " + tableID + e.getMessage());
