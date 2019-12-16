@@ -8,6 +8,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
+import java.util.Arrays;
 import java.util.Calendar;
 
 import org.apache.logging.log4j.LogManager;
@@ -27,7 +28,7 @@ import java.io.File;
 public class RegisterTbl400 {
    private static final Logger ovLogger = LogManager.getLogger();
 
-   private static String outPath;
+
    private static int tblID;
    
    static FileWriter verticaDDL ;
@@ -40,7 +41,7 @@ public class RegisterTbl400 {
    private Connection srcConn;
    private Statement srcStmt;
    private ResultSet sRset;
-   private int tableID;
+
 
    private static OVSrepo dbMeta = new OVSrepo();
    
@@ -239,6 +240,7 @@ public class RegisterTbl400 {
           System.out.println("   or:   RegisterTbl400 7 JOHNLEE2 TESTTBL1 JOHNLEE2.QSQJRN 4 DB2T TESTTBL1 11 1 c:\\Users\\johnlee\\  285");
           // test parms: 7 JOHNLEE2 TESTTBL2 JOHNLEE2.QSQJRN 4 test TESTTBL2 11 1 c:\Users\johnlee\ 501
           // test parms: 7 JDAADM INVORD JDAADM.INVORD 4 test INVORD 11 1 c:\Users\johnlee\ 
+          // 8 MM510CMN INVMST ITHAB1JRN.JDAJRN 4 test INVMST 11 1 c:/Users/johnlee/
           return ;
       } 
 
@@ -251,8 +253,10 @@ public class RegisterTbl400 {
       String tgtTbl = args[6];
       int poolID = Integer.parseInt(args[7]);
       int refType = Integer.parseInt(args[8]);
-      outPath = args[9];
+      String outPath = args[9];
 
+System.out.println(Arrays.toString(args));      
+System.out.println(outPath);      
       dbMeta.init();
       RegisterTbl400 regTbl = new RegisterTbl400();
       
@@ -265,11 +269,15 @@ public class RegisterTbl400 {
 	      
 	      // make sure tableID is not used
 	      if (dbMeta.isNewTblID(tblID)) {
-		      File dir = new File (outPath);
+/*		      File dir = new File (outPath);
 		      verticaDDL = new FileWriter(new File(dir, "verticaDDL.sql"));
 		      repoInsTbl = new FileWriter(new File(dir, "repoTblDML.sql"));
 		      repoInsCols = new FileWriter(new File(dir, "repoColsDML.sql"));
-		      
+*/		      
+		      verticaDDL = new FileWriter(new File(outPath + "verticaDDL.sql"));
+		      repoInsTbl = new FileWriter(new File(outPath + "repoTblDML.sql"));
+		      repoInsCols = new FileWriter(new File(outPath + "repoColsDML.sql"));
+
 		      regTbl.genDDL(srcDBid, srcSch, srcTbl, jrnlName, tgtDBid, tgtSch, tgtTbl, poolID, refType);
 		
 		      verticaDDL.close();
