@@ -28,7 +28,7 @@ class OVStgt {
    private int batchSize = Integer.parseInt(conf.getConf("batchSize"));
 
    private static final Logger ovLogger = LogManager.getLogger();
-   //private static final OVSmetrix metrix = OVSmetrix.getInstance();
+   private static final OVSmetrix metrix = OVSmetrix.getInstance();
    
    public boolean init() {
       label=">";
@@ -337,7 +337,7 @@ long tmpLong;
       return refreshCnt;
    }
 
-   public int dropStaleRecords() throws SQLException {
+   public int dropStaleRecords(String jobID,String srcTblAb7,int tableID) throws SQLException {  //2019.12.18: added the parameters purely for sending them to influxDB
       // deletes records to be replaced in target table
       boolean NeedsProcessing;
       int TotalRecordsProcessed;
@@ -398,6 +398,7 @@ long tmpLong;
          tgtStmt.executeUpdate (DeleteTargetTable) ;
          tgtConn.commit();
          ovLogger.info(label +  " deleted - " + TotalRecordsProcessed );
+         metrix.sendMX("deleted,jobId="+jobID+",tblID="+srcTblAb7+"~"+tableID+" value=" + TotalRecordsProcessed + "\n");
       }
       srcRset.close();
       

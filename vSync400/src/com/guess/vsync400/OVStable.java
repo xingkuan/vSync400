@@ -232,11 +232,12 @@ class OVStable {
             
 String rLib="", rName="";
 String strTS = new SimpleDateFormat("yyyy-MM-dd-HH.mm.ss.SSSSSS").format(tblMeta.getLastRefresh());
-lastJournalSeqNum=tblTgt.dropStaleRecords();
+
+	tblMeta.markStartTime();
+
+lastJournalSeqNum=tblTgt.dropStaleRecords(jobID,srcTblAb7,tableID);
 if(lastJournalSeqNum>0) {
     tblMeta.setCurrentState(3);   // set current state to being refreshed
-    tblMeta.markStartTime();
-
     String whereStr = " where rrn(a) in (" 
             		+ " select distinct(COUNT_OR_RRN) "
             		+ " FROM table (Display_Journal('" + jLibName + "', '" + jName + "', "
@@ -286,7 +287,12 @@ if(lastJournalSeqNum>0) {
                ovLogger.info("JobID: " + jobID + ", tblID: " + tableID + " <<<<<  refresh successfull");
             }
 }else {
- ovLogger.info("tblID: " + tableID + ", " + tblMeta.getSrcSchema() + "', '" + tblMeta.getSrcTable() + " has no change since last sync." );
+ ovLogger.info("tblID: " + tableID + ">>> " + tblMeta.getSrcSchema() + "." + tblMeta.getSrcTable() + " has no change since last sync." );
+ tblMeta.markEndTime();
+
+ tblMeta.setRefreshCnt(0);
+ tblMeta.saveRefreshStats(jobID, hostTS);
+
 }
          } catch (SQLException e) {
             rtv=false;
