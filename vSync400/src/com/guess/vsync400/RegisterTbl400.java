@@ -92,15 +92,15 @@ public class RegisterTbl400 {
 
           
           //For sync_table
-          String sqlRepoDML1 = "insert into VERTSNAP.SYNC_TABLE\r\n" + 
-            		"  (SOURCE_SCHEMA, TARGET_SCHEMA, SOURCE_TABLE, TARGET_TABLE, CURR_STATE, TABLE_WEIGHT, TABLE_ID,\r\n" + 
-            		"   SOURCE_TRIGGER_NAME, T_ORDER, ORA_DELIMITER, EXP_TYPE, EXP_TIMEOUT, VERT_DELIMITER, PARTITIONED,\r\n" + 
-            		"   SOURCE_LOG_TABLE, TARGET_PK, ERR_CNT, ERR_LIM, source_db_id, target_db_id, pool_id, refresh_type)\r\n" + 
-            		"values \r\n" +
-            		"  ('" + srcSch +"', '" + tgtSch + "', '" + srcTbl + "', '" + tgtTbl + "', 0, 1, " + tblID + ", \r\n" +
+          String sqlRepoDML1 = "insert into VERTSNAP.SYNC_TABLE \n" + 
+            		"  (SOURCE_SCHEMA, TARGET_SCHEMA, SOURCE_TABLE, TARGET_TABLE, CURR_STATE, TABLE_WEIGHT, TABLE_ID, \n" + 
+            		"   SOURCE_TRIGGER_NAME, T_ORDER, ORA_DELIMITER, EXP_TYPE, EXP_TIMEOUT, VERT_DELIMITER, PARTITIONED, \n" + 
+            		"   SOURCE_LOG_TABLE, TARGET_PK, ERR_CNT, ERR_LIM, source_db_id, target_db_id, pool_id, refresh_type) \n" + 
+            		"values \n" +
+            		"  ('" + srcSch +"', '" + tgtSch + "', '" + srcTbl + "', '" + tgtTbl + "', 0, 1, " + tblID + ", \n" +
             		"  '',  '', '|', 1, 500, '|', 'N', " +    // no SOURCE_TRIGGER_NAME
-            		"    '" + journal + "', 'DB2RRN', 0, 5, " + srcDBid + ", " + tgtDBid + ", " + poolID + ", " + refType + ")\r\n;";           //SOURCE_LOG_TABLE contains JOURNAL info	
-          System.out.println(sqlRepoDML1);
+            		"    '" + journal + "', 'DB2RRN', 0, 5, " + srcDBid + ", " + tgtDBid + ", " + poolID + ", " + refType + ") \n;";           //SOURCE_LOG_TABLE contains JOURNAL info	
+          //System.out.println(sqlRepoDML1);
           repoInsTbl.write(sqlRepoDML1);
           
           // for sync_table_field:
@@ -159,20 +159,20 @@ public class RegisterTbl400 {
         	  
         	  sqlRepoDMLfield = sqlRepoDMLTemp  
         			 +  sRset.getInt("ordinal_position") + ", " + tblID + ", '" + sRset.getString("column_name")  + "', '" 
-        			 + sRset.getString("column_name")  + "', '" + xForm + "', " + xType + ") ;\r\n";
+        			 + sRset.getString("column_name")  + "', '" + xForm + "', " + xType + ") ;\n";
         			 
-   	    	  System.out.println(sqlRepoDMLfield);
+   	    	  //System.out.println(sqlRepoDMLfield);
    	    	  repoInsCols.write(sqlRepoDMLfield);
           }
           sqlDDLv = sqlDDLv + 
         		  " DB2RRN int ) \n;";
-    	  System.out.println(sqlDDLv);
+    	  //System.out.println(sqlDDLv);
     	  verticaDDL.write(sqlDDLv);
 
     	  fieldCnt++;
     	  sqlRepoDMLfield = sqlRepoDMLTemp + fieldCnt + ", "+ tblID + ", 'RRN(a) as DB2RRN', 'DB2RRN', " 
-    			  + " 'nvl(rrn(a), NULL)', 1);"; 
-    	  System.out.println(sqlRepoDMLfield);
+    			  + " 'nvl(rrn(a), NULL)', 1) \n;"; 
+    	  //System.out.println(sqlRepoDMLfield);
     	  repoInsCols.write(sqlRepoDMLfield);
     	  
           sRset.close();

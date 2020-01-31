@@ -112,7 +112,7 @@ class OVSsrc {
          ovLogger.info(label + " conn attempt " + attempts);
          // this attempts a reset from a prior exception
          close();
-         //establish Oracle connection
+         //establish DB connection
          srcConn = DriverManager.getConnection(srcCred.getURL(), srcCred.getUser(), srcCred.getPWD());
          srcConnOpen=true;
          srcConn.setAutoCommit(false);
