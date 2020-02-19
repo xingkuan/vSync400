@@ -210,7 +210,7 @@ class OVStable {
       srcRC=0;
       tgtRC=0;
       
-      int lastJournalSeqNum;
+      Long lastJournalSeqNum;
 
       if (tblMeta.getCurrState() == 2 || tblMeta.getCurrState() == 5) {
          try {

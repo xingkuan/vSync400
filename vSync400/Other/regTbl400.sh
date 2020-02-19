@@ -16,6 +16,7 @@ TGTTBL=$7
 POOLID=$8
 SYNCTYPE=$9
 OUTDIR=${10}
+TBLID=${11}
 
 VHOST=vertu01
 VUSER=dbadmin
@@ -30,7 +31,7 @@ echo "target table:   $TGTSCH.$TGTTBL"
 echo "pool ID:        $POOLID"
 
 #java -Djava.security.egd=file:/dev/../dev/urandom -cp ./bin:$CLASSPATH com.guess.vsync400.RegisterTbl400 7 JDAADM INVORD JDAADM.INVORD 4 test INVORD 11 1 c:\Users\johnlee\
-java -Djava.security.egd=file:/dev/../dev/urandom -cp ./bin:$CLASSPATH com.guess.vsync400.RegisterTbl400 $SRCDBID $SRCSCH $SRCTBL $SRCJRNL $TGTDBID $TGTSCH $TGTTBL $POOLID $SYNCTYPE $OUTDIR
+java -Djava.security.egd=file:/dev/../dev/urandom -cp ./bin:$CLASSPATH com.guess.vsync400.RegisterTbl400 $SRCDBID $SRCSCH $SRCTBL $SRCJRNL $TGTDBID $TGTSCH $TGTTBL $POOLID $SYNCTYPE $OUTDIR $TBLID
 
 read -p "regsiter. Press enter to continue ..."
 sqlplus $repUser/$repPwd@$repDB @repoTblDDL.sql

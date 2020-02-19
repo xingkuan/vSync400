@@ -337,7 +337,7 @@ long tmpLong;
       return refreshCnt;
    }
 
-   public int dropStaleRecords(String jobID,String srcTblAb7,int tableID) throws SQLException {  //2019.12.18: added the parameters purely for sending them to influxDB
+   public Long dropStaleRecords(String jobID,String srcTblAb7,int tableID) throws SQLException {  //2019.12.18: added the parameters purely for sending them to influxDB
       // deletes records to be replaced in target table
       boolean NeedsProcessing;
       int TotalRecordsProcessed;
@@ -345,7 +345,7 @@ long tmpLong;
       int lRefreshCnt;
       String DeleteTargetTable = new String(""); 
       
-      int journalSeqNum=0;
+      Long journalSeqNum=0l;
       
       TotalRecordsProcessed = 0;
       CurrentRecordCount = 0;
@@ -359,7 +359,7 @@ long tmpLong;
          CurrentRecordCount++ ;
          TotalRecordsProcessed++ ;
          DeleteTargetTable += "'" + srcRset.getInt("RRN") + "'" ;
-         journalSeqNum = srcRset.getInt("SEQNBR");
+         journalSeqNum = srcRset.getLong("SEQNBR");
       }
       while (srcRset.next()) {
          TotalRecordsProcessed++ ;
@@ -367,7 +367,7 @@ long tmpLong;
          NeedsProcessing    = true;
          DeleteTargetTable += ", '" +  srcRset.getInt("RRN") + "'" ;
 
-         journalSeqNum = srcRset.getInt("SEQNBR");
+         journalSeqNum = srcRset.getLong("SEQNBR");
 
          //if ( CurrentRecordCount == MaxInCount ) {
          if ( CurrentRecordCount == batchSize ) {
@@ -387,7 +387,7 @@ long tmpLong;
                TotalRecordsProcessed++ ;
                DeleteTargetTable += "'" + srcRset.getString("RRN") + "'" ;
 
-               journalSeqNum = srcRset.getInt("SEQNBR");
+               journalSeqNum = srcRset.getLong("SEQNBR");
             }
          }
       }
