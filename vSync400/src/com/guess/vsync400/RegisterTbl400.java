@@ -155,7 +155,7 @@ public class RegisterTbl400 {
         		  xType = 1;
         		  xForm ="nvl(to_char(" + sRset.getString("column_name") + "), NULL)" ;
         	  }
-        	  sqlDDLv = sqlDDLv + sRset.getString("column_name") + " " + strDataSpec + ",\n";
+        	  sqlDDLv = sqlDDLv + "\"" + sRset.getString("column_name") + "\" " + strDataSpec + ",\n";
         	  
         	  sqlRepoDMLfield = sqlRepoDMLTemp  
         			 +  sRset.getInt("ordinal_position") + ", " + tblID + ", '" + sRset.getString("column_name")  + "', '" 

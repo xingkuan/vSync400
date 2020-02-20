@@ -294,19 +294,19 @@ class OVSmeta {
          sqlSelectSource = "select \n"    + lrRset.getString("source_field");      
          sqlInsertTarget = "insert into " + tgtSchema + "." + tgtTable ;
          sqlInsertTargetAlt = "insert into " + tgtSchema + "." + tgtTableAlt ;
-         sqlInsertTarget +=            "\n( "          + lrRset.getString("target_field");
-         sqlInsertTargetAlt +=            "\n( "          + lrRset.getString("target_field");
+         sqlInsertTarget +=            "\n( "          + "\"" + lrRset.getString("target_field") + "\"";
+         sqlInsertTargetAlt +=            "\n( "       + "\"" + lrRset.getString("target_field") + "\"";
          xformType[i] = lrRset.getInt("xform_type");
          fldName[i] = lrRset.getString("target_field");
          sqlCopySource = "select \n" + lrRset.getString("xform_fctn");
-         sqlCopyTarget = "copy " + tgtSchema + "." + tgtTable + " (" + lrRset.getString("target_field");
+         sqlCopyTarget = "copy " + tgtSchema + "." + tgtTable + " (" +  "\"" + lrRset.getString("target_field") + "\"";
       }
       while (lrRset.next()) {
          sqlSelectSource += " \n , " + lrRset.getString("source_field") ;    
-         sqlInsertTarget += " \n , " + lrRset.getString("target_field") ;   
-         sqlInsertTargetAlt += " \n , " + lrRset.getString("target_field") ;   
+         sqlInsertTarget += " \n , " + "\"" + lrRset.getString("target_field") + "\"";   
+         sqlInsertTargetAlt += " \n , " + "\"" + lrRset.getString("target_field") + "\""; 
          sqlCopySource += " || " + oraDelimiter + " || \n" + lrRset.getString("xform_fctn");
-         sqlCopyTarget += ", " + lrRset.getString("target_field");
+         sqlCopyTarget += ", " + "\"" + lrRset.getString("target_field") + "\"";
          i++;
          //System.out.println(i);
          xformType[i] = lrRset.getInt("xform_type");
