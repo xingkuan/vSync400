@@ -158,7 +158,8 @@ class OVSsrc {
 	   setThisRefreshSeq();
    }
    public boolean initSrcQuery(String whereClause){
-  
+	   markThisRun();
+	   
       // initializes the source recordset using the passed parameter whereClause as the where clause 
       boolean rtv=true;
       String sqlStmt = tblMeta.getSQLSelect() + " " + whereClause;
