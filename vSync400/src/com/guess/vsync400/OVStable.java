@@ -282,7 +282,7 @@ if(lastJournalSeqNum>0) {
                ovLogger.info("JobID: " + jobID + ", tblID: " + tableID + " <<<<<  refresh successfull");
             }
 }else {
- ovLogger.info("tblID: " + tableID + "   " + tblMeta.getSrcSchema() + "." + tblMeta.getSrcTable() + " has no change since last sync." );
+ ovLogger.info("tblID: " + tableID + "_____" + tblMeta.getSrcSchema() + "." + tblMeta.getSrcTable() + " has no change since last sync." );
  tblMeta.markEndTime();
 
  tblMeta.setRefreshCnt(0);

@@ -209,7 +209,7 @@ class OVSsrc {
     	              //		+ " where  snaptime = '01-JUN-1910'  )";    
          sRset=srcStmt.executeQuery(StrSQLRRN);
       } catch(SQLException e) {
-         ovLogger.error("src init failure" + e);
+         ovLogger.error("initSrcLogQuery() failure: " + e);
          rtv=false;
       }
       return rtv;
@@ -329,8 +329,8 @@ class OVSsrc {
 	            		+ "   cast(null as TIMESTAMP), "    //pass-in the start timestamp;
 	            		+ "   cast(" + strLastSeq + " as decimal(21,0)), "    //starting SEQ #
 	            		+ "   'R', "   //JOURNAL cat: record operations
-	            		//+ "   'UP,DL,PT,PX,UR,DR,UB',"    //JOURNAL entry 
-	            		+ "   '',"    //JOURNAL entry 
+	            		+ "   'UP,DL,PT,PX,UR,DR,UB',"    //JOURNAL entry 
+	            		//+ "   '',"    //JOURNAL entry 
 	            //+ "   '" + tblMeta.getSrcSchema() + "', '" + tblMeta.getSrcTable() + "', '*QDDS', '',"  //Object library, Object name, Object type, Object member
 	            + "   '', '', '*QDDS', '',"  
 	      		+ "   '', '', ''"   //User, Job, Program
@@ -345,7 +345,7 @@ class OVSsrc {
 	         lrRset.close();
 	         srcStmt.close();
 	      } catch(SQLException e) {
-	         ovLogger.error(label + " error during src audit: "+ e); 
+	         ovLogger.error(label + " error in setThisRefreshSeq(): "+ e); 
 	      }
 
 }
