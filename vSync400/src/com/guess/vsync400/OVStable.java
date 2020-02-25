@@ -76,14 +76,10 @@ class OVStable {
          tblMeta.setCurrentState(1);   // set current state to initializing
          tblMeta.markStartTime();
          try {
-//TOTO: Change back, DEBUG USE
             tblSrc.initSrcQuery("");
-//            tblSrc.initSrcQuery("where rowid='AAAptlAAiAAJyJ3AAF'");
             
             ovLogger.info("src query initialized. tblID: " + tableID +". Job " + jobID );
-//2019.11.18, John:
-            java.sql.Timestamp hostTS = tblSrc.getHostTS();
-            
+
             tblTgt.setSrcRset(tblSrc.getSrcResultSet());
             recordCnt=tblTgt.initLoadType1();
 
@@ -98,7 +94,10 @@ class OVStable {
             ovLogger.info("Refreshed tblID: " + tableID + ". JobID: " + jobID);
             
             tblMeta.markEndTime();
-            tblMeta.saveInitStats(jobID, hostTS); 
+            tblMeta.setRefreshTS(tblSrc.getThisRefreshHostTS());
+            tblMeta.setRefreshSeq(tblSrc.getThisRefreshSeq());
+            //tblMeta.saveInitStats(jobID, hostTS); 
+            tblMeta.saveInitStats(jobID); 
 
             if (recordCnt < 0) {
                tblMeta.setCurrentState(7);   //broken - suspended
@@ -216,22 +215,15 @@ class OVStable {
          try {
             tblSrc.initSrcLogQuery();
 
-            //2019.11.18:
-            java.sql.Timestamp hostTS = tblSrc.getHostTS();
-
-
-
             tblTgt.setSrcRset(tblSrc.getSrcResultSet());
 
       	  String srcLog = tblMeta.getLogTable();
       	  String[] res = srcLog.split("[.]", 0);
-      	  //String jLibName = "JOHNLEE2";
-      	  //String jName = "QSQJRN";
       	  String jLibName = res[0];
       	  String jName = res[1];
             
 String rLib="", rName="";
-String strTS = new SimpleDateFormat("yyyy-MM-dd-HH.mm.ss.SSSSSS").format(tblMeta.getLastRefresh());
+//String strTS = new SimpleDateFormat("yyyy-MM-dd-HH.mm.ss.SSSSSS").format(tblMeta.getLastRefresh());
 
 	tblMeta.markStartTime();
 
@@ -242,18 +234,18 @@ if(lastJournalSeqNum>0) {
             		+ " select distinct(COUNT_OR_RRN) "
             		+ " FROM table (Display_Journal('" + jLibName + "', '" + jName + "', "
             		+ "   '" + rLib + "', '" + rName + "', "
-            		+ "   cast('" + strTS +"' as TIMESTAMP), "    //pass-in the start timestamp;
-            		+ "   cast(null as decimal(21,0)), "    //starting SEQ #
+            		//+ "   cast('" + strTS +"' as TIMESTAMP), "    //pass-in the start timestamp;
+            		+ "   cast(null as TIMESTAMP), "    //pass-in the start timestamp;
+            		//+ "   cast(null as decimal(21,0)), "    //starting SEQ #
+            		+ "   cast(" + tblMeta.getSeqLastRefresh() + " as decimal(21,0)), "    //starting SEQ #
             		+ "   'R', "   //JOURNAL CODE: PT, DL, UP, PX?
-            		+ "   'UP,DL,PT,PX',"    //JOURNAL entry ?
+            		+ "   'UP,DL,PT,PX,UR,DR,UB',"    //JOURNAL entry ?
             + "   '" + tblMeta.getSrcSchema() + "', '" + tblMeta.getSrcTable() + "', '*QDDS', '',"  //Object library, Object name, Object type, Object member
       		+ "   '', '', ''"   //User, Job, Program
-      		+ ") ) as x where SEQUENCE_NUMBER <= " + lastJournalSeqNum + " )"
+      		+ ") ) as x )"
 ;            
             
-            //		"  where ( ROWID ) in ( select distinct M_ROW " 
-            //		+ " from "  +  tblMeta.getSrcSchema() + "." + tblMeta.getLogTable() 
-            //		+ " where  snaptime = '01-JUN-1910'  )";            
+    
             tblSrc.initSrcQuery(whereStr );  
             ovLogger.info("Source query initialized. tblID: " + tableID + " - " + tblMeta.getSrcDbDesc() );
             tblTgt.setSrcRset(tblSrc.getSrcResultSet());
@@ -269,7 +261,9 @@ if(lastJournalSeqNum>0) {
             tblMeta.markEndTime();
 
             tblMeta.setRefreshCnt(tblTgt.getRefreshCnt());
-            tblMeta.saveRefreshStats(jobID, hostTS);
+            tblMeta.setRefreshTS(tblSrc.getThisRefreshHostTS());
+            tblMeta.setRefreshSeq(tblSrc.getThisRefreshSeq());
+            tblMeta.saveRefreshStats(jobID);
 
             metrix.sendMX("JournalSeq,jobId="+jobID+",tblID="+srcTblAb7+"~"+tableID+" value=" + lastJournalSeqNum + "\n");
             
@@ -291,7 +285,9 @@ if(lastJournalSeqNum>0) {
  tblMeta.markEndTime();
 
  tblMeta.setRefreshCnt(0);
- tblMeta.saveRefreshStats(jobID, hostTS);
+ tblMeta.setRefreshTS(tblSrc.getThisRefreshHostTS());
+ tblMeta.setRefreshSeq(tblSrc.getThisRefreshSeq());
+ tblMeta.saveRefreshStats(jobID);
 
 }
          } catch (SQLException e) {

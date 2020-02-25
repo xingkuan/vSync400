@@ -59,6 +59,7 @@ class OVSmeta {
    private Timestamp tsLastAudit;
    private int auditExp;
    private Timestamp tsLastRefresh;   
+   private long seqLastRef;
    private int poolID;   
    private int prcTimeout;
    private long startMS;
@@ -72,7 +73,10 @@ class OVSmeta {
    private boolean tgtUseAlt;
    private String label;
    private String srcTblAb7;
-   
+
+   private Timestamp tsThisRefresh;   
+   private long seqThisRef;
+
    private static final Logger ovLogger = LogManager.getLogger();
 
    private static final OVSmetrix metrix = OVSmetrix.getInstance();
@@ -120,7 +124,7 @@ class OVSmeta {
          repConn = DriverManager.getConnection(repCred.getURL(), repCred.getUser(), repCred.getPWD());
          repConn.setAutoCommit(false);
          repStmt = repConn.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_UPDATABLE);
-         rRset = repStmt.executeQuery("select SOURCE_SCHEMA, TARGET_SCHEMA, SOURCE_TABLE, TARGET_TABLE, TS_LAST_REFRESH, "
+         rRset = repStmt.executeQuery("select SOURCE_SCHEMA, TARGET_SCHEMA, SOURCE_TABLE, TARGET_TABLE, TS_LAST_REF400, SEQ_LAST_REF, "
          		+ "	TS_LAST_AUDIT, AUDIT_EXP, POOL_ID, REFRESH_TYPE, MIN_POLL_INTERVAL, REC_CNT_THRESHOLD, TARGET_TABLE_ALT, "
         	    + "	TS_LAST_INIT,  CURR_STATE, TABLE_WEIGHT, LAST_REFRESH_DURATION, LAST_INIT_DURATION, REFRESH_CNT,  "
          		+ "	AUD_SOURCE_RECORD_CNT, AUD_TARGET_RECORD_CNT, TABLE_ID, SOURCE_TRIGGER_NAME, T_ORDER, ORA_DELIMITER, "
@@ -149,7 +153,11 @@ class OVSmeta {
             minPollInterval=rRset.getInt("MIN_POLL_INTERVAL"); 
             poolID=rRset.getInt("POOL_ID");
             tsLastAudit=rRset.getTimestamp("TS_LAST_AUDIT");
-            tsLastRefresh=rRset.getTimestamp("TS_LAST_REFRESH");
+            //2020.02.21 quick&dirty solution: TS_LAST_REFRESH (a DATE) is info only anymore! we need TS to track the processed TS in DB2.
+            tsLastRefresh=rRset.getTimestamp("TS_LAST_REF400");
+            //2020.02.24: the above change is not safe enough. Switch to using DB2's SEQUENCE_NUMBER, which is kept in SEQ_LAST_REF:
+            seqLastRef=rRset.getLong("SEQ_LAST_REF");
+            
             auditExp=rRset.getInt("AUDIT_EXP");
             
             srcTblAb7 = srcTable.substring(0, Math.min(7, srcTable.length()));
@@ -341,20 +349,23 @@ class OVSmeta {
       endMS = cal.getTimeInMillis();
    }
    
-   public void saveInitStats(String jobID, java.sql.Timestamp hostTS) {
+   //public void saveInitStats(String jobID, java.sql.Timestamp hostTS) {
+   public void saveInitStats(String jobID) {
 	  int duration =  (int) (endMS - startMS)/1000;
       ovLogger.info(label + " duration: " + duration + " seconds");
       
       //Save to InfluxDB:
       metrix.sendMX("initDuration,jobId="+jobID+",tblID="+srcTblAb7+"~"+tableID+" value="+duration+"\n");
       metrix.sendMX("initRows,jobId="+jobID+",tblID="+srcTblAb7+"~"+tableID+" value="+refreshCnt+"\n");
+      metrix.sendMX("JurnalSeq,jobId="+jobID+",tblID="+srcTblAb7+"~"+tableID+" value="+seqThisRef+"\n");
 
       //Save to MetaRep:
       java.sql.Timestamp ts = new java.sql.Timestamp(System.currentTimeMillis()); 
       try {                     
          rRset.updateInt("LAST_INIT_DURATION", (int)((endMS - startMS)/1000));
-         rRset.updateTimestamp("TS_LAST_INIT",hostTS);
-         rRset.updateTimestamp("TS_LAST_REFRESH",hostTS);
+         rRset.updateTimestamp("TS_LAST_INIT",tsThisRefresh);
+         rRset.updateTimestamp("TS_LAST_REF400",tsThisRefresh);
+         rRset.updateLong("SEQ_LAST_REF",seqThisRef);
          rRset.updateTimestamp("TS_LAST_AUDIT",ts);
          rRset.updateInt("AUD_SOURCE_RECORD_CNT",refreshCnt);     
          rRset.updateInt("AUD_TARGET_RECORD_CNT",refreshCnt);
@@ -366,15 +377,19 @@ class OVSmeta {
       }
    }
    
-   public void saveRefreshStats(String jobID, java.sql.Timestamp hostTS) {
+   public void saveRefreshStats(String jobID) {
 	   int duration = (int)(int)((endMS - startMS)/1000);
 
 	   metrix.sendMX("syncDuration,jobId="+jobID+",tblID="+srcTblAb7+"~"+tableID+" value="+duration+"\n");
 	   metrix.sendMX("syncCount,jobId="+jobID+",tblID="+srcTblAb7+"~"+tableID+" value="+refreshCnt+"\n");
+	   metrix.sendMX("JurnalSeq,jobId="+jobID+",tblID="+srcTblAb7+"~"+tableID+" value="+seqThisRef+"\n");
 
       try {                     
          rRset.updateInt("LAST_REFRESH_DURATION", duration);
-         rRset.updateTimestamp("TS_LAST_REFRESH",hostTS);
+         //2020.02.21
+         //rRset.updateTimestamp("TS_LAST_REFRESH",hostTS);
+         rRset.updateTimestamp("TS_LAST_REF400",tsThisRefresh);
+         rRset.updateLong("SEQ_LAST_REF",seqThisRef);
          rRset.updateInt("REFRESH_CNT",refreshCnt);
         
          rRset.updateRow();
@@ -399,6 +414,15 @@ class OVSmeta {
          ovLogger.error(label + e.getMessage());
       }
    }
+  
+   
+   public void setRefreshTS(Timestamp thisRefreshHostTS) {
+		tsThisRefresh = thisRefreshHostTS;
+	}
+	public void setRefreshSeq(long thisRefreshSeq) {
+		seqThisRef=thisRefreshSeq;
+	}
+
    
    public int getPrcTimeout() {
       return prcTimeout;
@@ -418,6 +442,9 @@ class OVSmeta {
    public Timestamp getLastRefresh() {
       return tsLastRefresh; 
    }
+   public long getSeqLastRefresh() {
+	      return seqLastRef; 
+	   }
    public int getPoolID() {
       return poolID;
    }
@@ -554,4 +581,5 @@ class OVSmeta {
       }
 
    }
+
 }    

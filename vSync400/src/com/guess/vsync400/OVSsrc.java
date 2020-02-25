@@ -47,6 +47,13 @@ class OVSsrc {
    private int connAtmptLim=5;
    private int AtmptDelay=5000;
    
+   private String jLibName ;
+   private String jName ;
+
+   private long seqThisFresh=0;
+   private java.sql.Timestamp tsThisRefesh=null;
+
+   
    private static final Logger ovLogger = LogManager.getLogger();
    
 //.   public void setLogger(OVSlogger ol) {
@@ -62,6 +69,15 @@ class OVSsrc {
    }
    public boolean init(String lbl) {
       label=lbl;
+      
+	  String srcLog = tblMeta.getLogTable();
+	  String[] res = srcLog.split("[.]", 0);
+	  //String jLibName = "JOHNLEE2";
+	  //String jName = "QSQJRN";
+	  jLibName = res[0];
+	  jName = res[1];
+
+      
       return linit();
    }
 
@@ -136,6 +152,11 @@ class OVSsrc {
       return rtv;
    }
    public boolean initSrcQuery(String whereClause){
+	  //2020.02.24: 
+	  //   before doing anything, record the current Timestamp and Sequence_number of the Journal:
+	   setThisRefreshHostTS();
+	   setThisRefreshSeq();
+	   
       // initializes the source recordset using the passed parameter whereClause as the where clause 
       boolean rtv=true;
       String sqlStmt = tblMeta.getSQLSelect() + " " + whereClause;
@@ -156,23 +177,26 @@ class OVSsrc {
       // initializes the source log query
       boolean rtv=true;
       
+      String strLastSeq;
+      if (tblMeta.getSeqLastRefresh() == 0) {
+    	  strLastSeq = "null";
+      }else {
+    	  strLastSeq =  Long.toString(tblMeta.getSeqLastRefresh());
+      }
+      
       try {
-    	  String srcLog = tblMeta.getLogTable();
-    	  String[] res = srcLog.split("[.]", 0);
-    	  //String jLibName = "JOHNLEE2";
-    	  //String jName = "QSQJRN";
-    	  String jLibName = res[0];
-    	  String jName = res[1];
     	  
     	  String rLib="", rName="";
-    	   String strTS = new SimpleDateFormat("yyyy-MM-dd-HH.mm.ss.SSSSSS").format(tblMeta.getLastRefresh());
+   	 //  String strTS = new SimpleDateFormat("yyyy-MM-dd-HH.mm.ss.SSSSSS").format(tblMeta.getLastRefresh());
+    	  
     	  String StrSQLRRN =  " select COUNT_OR_RRN as RRN,  SEQUENCE_NUMBER AS SEQNBR"
     	              		+ " FROM table (Display_Journal('" + jLibName + "', '" + jName + "', "
     	              		+ "   '" + rLib + "', '" + rName + "', "
-    	              		+ "   cast('" + strTS +"' as TIMESTAMP), "    //pass-in the start timestamp;
-    	              		+ "   cast(null as decimal(21,0)), "    //starting SEQ #
+    	              		//+ "   cast('" + strTS +"' as TIMESTAMP), "    //pass-in the start timestamp;
+    	              		+ "   cast(null as TIMESTAMP), "    //pass-in the start timestamp;
+    	              		+ "   cast(" + strLastSeq + " as decimal(21,0)), "    //starting SEQ #
     	              		+ "   'R', "   //JOURNAL CODE: PT, DL, UP, PX?
-    	              		+ "   'UP,DL,PT,PX',"    //JOURNAL entry ?
+    	              		+ "   'UP,DL,PT,PX,UR,DR,UB',"    //JOURNAL entry ?
     	              		+ "   '" + tblMeta.getSrcSchema() + "', '" + tblMeta.getSrcTable() + "', '*QDDS', '',"  //Object library, Object name, Object type, Object member
     	              		+ "   '', '', ''"   //User, Job, Program
     	              		+ ") ) as x order by 2 asc"
@@ -249,27 +273,22 @@ class OVSsrc {
    public int getLogCnt() {
       return logCnt;
    }
-/* not for DB2 AS400, 2019.11.18 John
-   public void setTriggerOff() throws SQLException {
-      srcStmt.executeUpdate("alter trigger "  + tblMeta.getSrcTrigger() + " disable");       
-      //System.out.println("========>>> trigger turned off");      
+  
+   //To be safe, let's get the TS from journal, (instead of "CURRENT TIMESTAM" (later maybe the corresponding highest SEQ # as well).   
+   public java.sql.Timestamp getThisRefreshHostTS(){
+	   return tsThisRefesh;
    }
-   public void truncateLog() throws SQLException {
-      //System.out.println("truncate table " + tblMeta.getLogTable());
-      srcStmt.executeUpdate("truncate table " + tblMeta.getSrcSchema() + "." +  tblMeta.getLogTable());
-   }
-*/
-   
-   
-   public java.sql.Timestamp getHostTS(){
+   private void setThisRefreshHostTS(){
 	      int rtv;
 	      ResultSet lrRset;
 	      java.sql.Timestamp hostTS = null;
 	      
 	      try {
 	    	 srcStmt = srcConn.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
-
-	         lrRset=srcStmt.executeQuery("SELECT CURRENT TIMESTAMP FROM SYSIBM.SYSDUMMY1");
+	    	 
+	    	 String strSQL = "SELECT CURRENT TIMESTAMP FROM SYSIBM.SYSDUMMY1";
+	    	 lrRset=srcStmt.executeQuery(strSQL);
+	         
 	         if (lrRset.next()) {
 	            hostTS = lrRset.getTimestamp(1);  
 	      }
@@ -279,8 +298,55 @@ class OVSsrc {
 	         ovLogger.error(label + " error during src audit: "+ e); 
 	      }
 
-	      return hostTS;
+	      tsThisRefesh = hostTS;
    }
+
+   public long getThisRefreshSeq(){
+	   return seqThisFresh;
+   }
+   
+   private void setThisRefreshSeq(){
+	      int rtv;
+	      ResultSet lrRset;
+	      
+	      String strLastSeq;
+	      if (tblMeta.getSeqLastRefresh() == 0) {
+	    	  strLastSeq = "null";
+	      }else {
+	    	  strLastSeq =  Long.toString(tblMeta.getSeqLastRefresh());
+	      }
+	      
+	      try {
+	    	 srcStmt = srcConn.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
+	    	 
+	    	 String strSQL = " select max(SEQUENCE_NUMBER) "
+	            		+ " FROM table (Display_Journal('" + jLibName + "', '" + jName + "', "
+	            		+ "   '', '', "
+	            		//+ "   cast('" + strTS +"' as TIMESTAMP), "    //pass-in the start timestamp;
+	            		+ "   cast(null as TIMESTAMP), "    //pass-in the start timestamp;
+	            		+ "   cast(" + strLastSeq + " as decimal(21,0)), "    //starting SEQ #
+	            		+ "   'R', "   //JOURNAL cat: record operations
+	            		//+ "   'UP,DL,PT,PX,UR,DR,UB',"    //JOURNAL entry 
+	            		+ "   '',"    //JOURNAL entry 
+	            //+ "   '" + tblMeta.getSrcSchema() + "', '" + tblMeta.getSrcTable() + "', '*QDDS', '',"  //Object library, Object name, Object type, Object member
+	            + "   '', '', '*QDDS', '',"  
+	      		+ "   '', '', ''"   //User, Job, Program
+	      		//+ ") ) as x where SEQUENCE_NUMBER >= " + tblMeta.getLastRefresh() + " )"
+	      		+ ") ) as x "
+	      		;
+	    	 lrRset=srcStmt.executeQuery(strSQL);
+	         
+	         if (lrRset.next()) {
+	        	 seqThisFresh = lrRset.getLong(1);  
+	      }
+	         lrRset.close();
+	         srcStmt.close();
+	      } catch(SQLException e) {
+	         ovLogger.error(label + " error during src audit: "+ e); 
+	      }
+
+}
+
 
    
 //   public void delConsumedLog() throws SQLException {
