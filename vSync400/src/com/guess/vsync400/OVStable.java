@@ -226,6 +226,7 @@ String rLib="", rName="";
 //String strTS = new SimpleDateFormat("yyyy-MM-dd-HH.mm.ss.SSSSSS").format(tblMeta.getLastRefresh());
 
 	tblMeta.markStartTime();
+	tblSrc.markThisRun();
 
 lastJournalSeqNum=tblTgt.dropStaleRecords(jobID,srcTblAb7,tableID);
 if(lastJournalSeqNum>0) {
@@ -245,8 +246,8 @@ if(lastJournalSeqNum>0) {
       		+ ") ) as x )"
 ;            
             
-    
-            tblSrc.initSrcQuery(whereStr );  
+            tblSrc.initSrcQuery(whereStr );
+            
             ovLogger.info("Source query initialized. tblID: " + tableID + " - " + tblMeta.getSrcDbDesc() );
             tblTgt.setSrcRset(tblSrc.getSrcResultSet());
             
@@ -281,7 +282,7 @@ if(lastJournalSeqNum>0) {
                ovLogger.info("JobID: " + jobID + ", tblID: " + tableID + " <<<<<  refresh successfull");
             }
 }else {
- ovLogger.info("tblID: " + tableID + ">>> " + tblMeta.getSrcSchema() + "." + tblMeta.getSrcTable() + " has no change since last sync." );
+ ovLogger.info("tblID: " + tableID + "   " + tblMeta.getSrcSchema() + "." + tblMeta.getSrcTable() + " has no change since last sync." );
  tblMeta.markEndTime();
 
  tblMeta.setRefreshCnt(0);

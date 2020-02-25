@@ -151,12 +151,14 @@ class OVSsrc {
 
       return rtv;
    }
-   public boolean initSrcQuery(String whereClause){
+   public void markThisRun(){
 	  //2020.02.24: 
 	  //   before doing anything, record the current Timestamp and Sequence_number of the Journal:
 	   setThisRefreshHostTS();
 	   setThisRefreshSeq();
-	   
+   }
+   public boolean initSrcQuery(String whereClause){
+  
       // initializes the source recordset using the passed parameter whereClause as the where clause 
       boolean rtv=true;
       String sqlStmt = tblMeta.getSQLSelect() + " " + whereClause;
