@@ -222,7 +222,6 @@ class OVStable {
       	  String jLibName = res[0];
       	  String jName = res[1];
             
-String rLib="", rName="";
 //String strTS = new SimpleDateFormat("yyyy-MM-dd-HH.mm.ss.SSSSSS").format(tblMeta.getLastRefresh());
 
 	tblMeta.markStartTime();
@@ -234,7 +233,7 @@ if(lastJournalSeqNum>0) {
     String whereStr = " where rrn(a) in (" 
             		+ " select distinct(COUNT_OR_RRN) "
             		+ " FROM table (Display_Journal('" + jLibName + "', '" + jName + "', "
-            		+ "   '" + rLib + "', '" + rName + "', "
+            		+ "   '', '*CURCHAIN', "
             		//+ "   cast('" + strTS +"' as TIMESTAMP), "    //pass-in the start timestamp;
             		+ "   cast(null as TIMESTAMP), "    //pass-in the start timestamp;
             		//+ "   cast(null as decimal(21,0)), "    //starting SEQ #

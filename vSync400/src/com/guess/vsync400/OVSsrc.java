@@ -188,13 +188,11 @@ class OVSsrc {
       }
       
       try {
-    	  
-    	  String rLib="", rName="";
    	 //  String strTS = new SimpleDateFormat("yyyy-MM-dd-HH.mm.ss.SSSSSS").format(tblMeta.getLastRefresh());
     	  
     	  String StrSQLRRN =  " select COUNT_OR_RRN as RRN,  SEQUENCE_NUMBER AS SEQNBR"
     	              		+ " FROM table (Display_Journal('" + jLibName + "', '" + jName + "', "
-    	              		+ "   '" + rLib + "', '" + rName + "', "
+    	              		+ "   '', '*CURCHAIN', "
     	              		//+ "   cast('" + strTS +"' as TIMESTAMP), "    //pass-in the start timestamp;
     	              		+ "   cast(null as TIMESTAMP), "    //pass-in the start timestamp;
     	              		+ "   cast(" + strLastSeq + " as decimal(21,0)), "    //starting SEQ #
@@ -324,7 +322,7 @@ class OVSsrc {
 	    	 
 	    	 String strSQL = " select max(SEQUENCE_NUMBER) "
 	            		+ " FROM table (Display_Journal('" + jLibName + "', '" + jName + "', "
-	            		+ "   '', '', "
+	            		+ "   '', '*CURCHAIN', "
 	            		//+ "   cast('" + strTS +"' as TIMESTAMP), "    //pass-in the start timestamp;
 	            		+ "   cast(null as TIMESTAMP), "    //pass-in the start timestamp;
 	            		+ "   cast(" + strLastSeq + " as decimal(21,0)), "    //starting SEQ #
