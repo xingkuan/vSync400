@@ -157,9 +157,27 @@ class OVSsrc {
 	   setThisRefreshHostTS();
 	   setThisRefreshSeq();
    }
-   public boolean initSrcQuery(String whereClause){
+   //public boolean initSrcQuery(String whereClause){
+   public boolean initSrcQuery(boolean isInit){
 	   markThisRun();
-	   
+	   String whereClause;
+	   if(isInit) {
+		   whereClause = "";
+	   }else {
+		   whereClause = " where rrn(a) in (" 
+        		+ " select distinct(COUNT_OR_RRN) "
+        		+ " FROM table (Display_Journal('" + jLibName + "', '" + jName + "', "
+        		+ "   '', '*CURCHAIN', "
+        		//+ "   cast('" + strTS +"' as TIMESTAMP), "    //pass-in the start timestamp;
+        		+ "   cast(null as TIMESTAMP), "    //pass-in the start timestamp;
+        		//+ "   cast(null as decimal(21,0)), "    //starting SEQ #
+        		+ "   cast(" + tblMeta.getSeqLastRefresh() + " as decimal(21,0)), "    //starting SEQ #
+        		+ "   'R', "   //JOURNAL CODE: 
+        		+ "   '',"    //JOURNAL entry: UP,DL,PT,PX,UR,DR,UB
+        + "   '" + tblMeta.getSrcSchema() + "', '" + tblMeta.getSrcTable() + "', '*QDDS', '',"  //Object library, Object name, Object type, Object member
+  		+ "   '', '', ''"   //User, Job, Program
+  		+ ") ) as x where SEQUENCE_NUMBER >=" + tblMeta.getSeqLastRefresh() + " and SEQUENCE_NUMBER <=" + seqThisFresh + ")";            
+	   }
       // initializes the source recordset using the passed parameter whereClause as the where clause 
       boolean rtv=true;
       String sqlStmt = tblMeta.getSQLSelect() + " " + whereClause;
@@ -177,30 +195,35 @@ class OVSsrc {
       return rtv;
    }
    public boolean initSrcLogQuery() {
+	   markThisRun();
+	   
       // initializes the source log query
       boolean rtv=true;
       
       String strLastSeq;
+      String strReceiver;
       if (tblMeta.getSeqLastRefresh() == 0) {
     	  strLastSeq = "null";
+    	  strReceiver="";
       }else {
     	  strLastSeq =  Long.toString(tblMeta.getSeqLastRefresh());
+    	  strReceiver="*CURCHAIN";
       }
       
       try {
    	 //  String strTS = new SimpleDateFormat("yyyy-MM-dd-HH.mm.ss.SSSSSS").format(tblMeta.getLastRefresh());
-    	  
+    	  srcStmt = srcConn.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
     	  String StrSQLRRN =  " select COUNT_OR_RRN as RRN,  SEQUENCE_NUMBER AS SEQNBR"
     	              		+ " FROM table (Display_Journal('" + jLibName + "', '" + jName + "', "
-    	              		+ "   '', '*CURCHAIN', "
+    	              		+ "   '', '" + strReceiver + "', "
     	              		//+ "   cast('" + strTS +"' as TIMESTAMP), "    //pass-in the start timestamp;
     	              		+ "   cast(null as TIMESTAMP), "    //pass-in the start timestamp;
     	              		+ "   cast(" + strLastSeq + " as decimal(21,0)), "    //starting SEQ #
-    	              		+ "   'R', "   //JOURNAL CODE: PT, DL, UP, PX?
-    	              		+ "   'UP,DL,PT,PX,UR,DR,UB',"    //JOURNAL entry ?
+    	              		+ "   'R', "   //JOURNAL CODE: record operation
+    	              		+ "   '',"    //JOURNAL entry: UP,DL,PT,PX,UR,DR,UB
     	              		+ "   '" + tblMeta.getSrcSchema() + "', '" + tblMeta.getSrcTable() + "', '*QDDS', '',"  //Object library, Object name, Object type, Object member
     	              		+ "   '', '', ''"   //User, Job, Program
-    	              		+ ") ) as x order by 2 asc"
+    	              		+ ") ) as x where SEQUENCE_NUMBER >=" + strLastSeq + " and SEQUENCE_NUMBER <=" + Long.toString(seqThisFresh) + " order by 2 asc"   // something weird with DB2 function: the starting SEQ number seems not takining effect
     	              		;
     	              //		"  where ( ROWID ) in ( select distinct M_ROW " 
     	              //		+ " from "  +  tblMeta.getSrcSchema() + "." + tblMeta.getLogTable() 
@@ -310,24 +333,31 @@ class OVSsrc {
 	      int rtv;
 	      ResultSet lrRset;
 	      
+	      String strSQL;
+	 
 	      String strLastSeq;
+	      String strReceiver;
 	      if (tblMeta.getSeqLastRefresh() == 0) {
 	    	  strLastSeq = "null";
+	    	  strReceiver="";
 	      }else {
 	    	  strLastSeq =  Long.toString(tblMeta.getSeqLastRefresh());
+	    	  // the max should alwas be from the current. Hopefully this will make it little faster. 
+	    	  //strReceiver="*CURCHAIN";
+	    	  strReceiver="";
 	      }
 	      
 	      try {
 	    	 srcStmt = srcConn.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
-	    	 
-	    	 String strSQL = " select max(SEQUENCE_NUMBER) "
+	    	 //locate the ending SEQUENCE_NUMBER of this run:
+	    	 strSQL = " select max(SEQUENCE_NUMBER) "
 	            		+ " FROM table (Display_Journal('" + jLibName + "', '" + jName + "', "
-	            		+ "   '', '*CURCHAIN', "
+	            		+ "   '', '" + strReceiver + "', "
 	            		//+ "   cast('" + strTS +"' as TIMESTAMP), "    //pass-in the start timestamp;
 	            		+ "   cast(null as TIMESTAMP), "    //pass-in the start timestamp;
 	            		+ "   cast(" + strLastSeq + " as decimal(21,0)), "    //starting SEQ #
 	            		+ "   'R', "   //JOURNAL cat: record operations
-	            		+ "   'UP,DL,PT,PX,UR,DR,UB',"    //JOURNAL entry 
+	            		+ "   '',"    //JOURNAL entry: UP,DL,PT,PX,UR,DR,UB 
 	            		//+ "   '',"    //JOURNAL entry 
 	            //+ "   '" + tblMeta.getSrcSchema() + "', '" + tblMeta.getSrcTable() + "', '*QDDS', '',"  //Object library, Object name, Object type, Object member
 	            + "   '', '', '*QDDS', '',"  
@@ -335,12 +365,18 @@ class OVSsrc {
 	      		//+ ") ) as x where SEQUENCE_NUMBER >= " + tblMeta.getLastRefresh() + " )"
 	      		+ ") ) as x "
 	      		;
-	    	 lrRset=srcStmt.executeQuery(strSQL);
+	    	 	lrRset=srcStmt.executeQuery(strSQL);
 	         
-	         if (lrRset.next()) {
-	        	 seqThisFresh = lrRset.getLong(1);  
-	      }
-	         lrRset.close();
+	    	 	if (lrRset.next()) {
+	        	  seqThisFresh = lrRset.getLong(1);  
+	    	 	}
+	    	 	lrRset.close();
+
+    	 	//generate the list of RRNs:
+	    	 //   ... abandon it, considering the cases when the list is too long
+	    	 //   so keep the logic in OVStgt	
+	         
+	         
 	         srcStmt.close();
 	      } catch(SQLException e) {
 	         ovLogger.error(label + " error in setThisRefreshSeq(): "+ e); 

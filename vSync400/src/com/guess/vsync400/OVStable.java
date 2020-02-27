@@ -76,7 +76,7 @@ class OVStable {
          tblMeta.setCurrentState(1);   // set current state to initializing
          tblMeta.markStartTime();
          try {
-            tblSrc.initSrcQuery("");
+            tblSrc.initSrcQuery(true);
             
             ovLogger.info("src query initialized. tblID: " + tableID +". Job " + jobID );
 
@@ -223,14 +223,12 @@ class OVStable {
       	  String jName = res[1];
             
 //String strTS = new SimpleDateFormat("yyyy-MM-dd-HH.mm.ss.SSSSSS").format(tblMeta.getLastRefresh());
-
 	tblMeta.markStartTime();
-	tblSrc.markThisRun();
 
 lastJournalSeqNum=tblTgt.dropStaleRecords(jobID,srcTblAb7,tableID);
 if(lastJournalSeqNum>0) {
     tblMeta.setCurrentState(3);   // set current state to being refreshed
-    String whereStr = " where rrn(a) in (" 
+/*    String whereStr = " where rrn(a) in (" 
             		+ " select distinct(COUNT_OR_RRN) "
             		+ " FROM table (Display_Journal('" + jLibName + "', '" + jName + "', "
             		+ "   '', '*CURCHAIN', "
@@ -238,15 +236,16 @@ if(lastJournalSeqNum>0) {
             		+ "   cast(null as TIMESTAMP), "    //pass-in the start timestamp;
             		//+ "   cast(null as decimal(21,0)), "    //starting SEQ #
             		+ "   cast(" + tblMeta.getSeqLastRefresh() + " as decimal(21,0)), "    //starting SEQ #
-            		+ "   'R', "   //JOURNAL CODE: PT, DL, UP, PX?
-            		+ "   'UP,DL,PT,PX,UR,DR,UB',"    //JOURNAL entry ?
+            		+ "   'R', "   //JOURNAL CODE: 
+            		+ "   '',"    //JOURNAL entry: UP,DL,PT,PX,UR,DR,UB
             + "   '" + tblMeta.getSrcSchema() + "', '" + tblMeta.getSrcTable() + "', '*QDDS', '',"  //Object library, Object name, Object type, Object member
       		+ "   '', '', ''"   //User, Job, Program
       		+ ") ) as x )"
 ;            
             
             tblSrc.initSrcQuery(whereStr );
-            
+*/          tblSrc.initSrcQuery(false);
+
             ovLogger.info("Source query initialized. tblID: " + tableID + " - " + tblMeta.getSrcDbDesc() );
             tblTgt.setSrcRset(tblSrc.getSrcResultSet());
             

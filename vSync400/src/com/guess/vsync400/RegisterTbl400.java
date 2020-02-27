@@ -316,8 +316,8 @@ System.out.println(outPath);
 	    	              		+ "   '" + rLib + "', '" + rName + "', "
 	    	              		+ "   cast('" + strTS +"' as TIMESTAMP), "    //pass-in the start timestamp;
 	    	              		+ "   cast(null as decimal(21,0)), "    //starting SEQ #
-	    	              		+ "   'R', "   //JOURNAL CODE: PT, DL, UP, PX?
-	    	              		+ "   'UP,DL,PT,PX',"    //JOURNAL entry ?
+	    	              		+ "   'R', "   //JOURNAL CODE: 
+	    	              		+ "   '',"    //JOURNAL entry:UP,DL,PT,PX
 	    	              		+ "   '" + srcSch + "', '" + srcTbl + "', '*QDDS', '',"  //Object library, Object name, Object type, Object member
 	    	              		+ "   '', '', ''"   //User, Job, Program
 	    	              		+ ") ) as x order by 2 asc"
