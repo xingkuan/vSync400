@@ -339,15 +339,16 @@ class OVSsrc {
 	 
 	      String strLastSeq;
 	      String strReceiver;
-	      if (tblMeta.getSeqLastRefresh() == 0) {
+	      //last is last; no difference. So:
+	      //if (tblMeta.getSeqLastRefresh() == 0) {
 	    	  strLastSeq = "null";
 	    	  strReceiver="";
-	      }else {
-	    	  strLastSeq =  Long.toString(tblMeta.getSeqLastRefresh());
-	    	  // the max should alwas be from the current. Hopefully this will make it little faster. 
-	    	  //strReceiver="*CURCHAIN";
-	    	  strReceiver="";
-	      }
+	      //}else {
+	    //	  strLastSeq =  Long.toString(tblMeta.getSeqLastRefresh());
+	    //	  // the max should alwas be from the current. Hopefully this will make it little faster. 
+	    //	  //strReceiver="*CURCHAIN";
+	    //	  strReceiver="";
+	    //  }
 	      
 	      try {
 	    	 srcStmt = srcConn.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
@@ -355,13 +356,10 @@ class OVSsrc {
 	    	 strSQL = " select max(SEQUENCE_NUMBER) "
 	            		+ " FROM table (Display_Journal('" + jLibName + "', '" + jName + "', "
 	            		+ "   '', '" + strReceiver + "', "
-	            		//+ "   cast('" + strTS +"' as TIMESTAMP), "    //pass-in the start timestamp;
 	            		+ "   cast(null as TIMESTAMP), "    //pass-in the start timestamp;
 	            		+ "   cast(" + strLastSeq + " as decimal(21,0)), "    //starting SEQ #
 	            		+ "   'R', "   //JOURNAL cat: record operations
 	            		+ "   '',"    //JOURNAL entry: UP,DL,PT,PX,UR,DR,UB 
-	            		//+ "   '',"    //JOURNAL entry 
-	            //+ "   '" + tblMeta.getSrcSchema() + "', '" + tblMeta.getSrcTable() + "', '*QDDS', '',"  //Object library, Object name, Object type, Object member
 	            + "   '', '', '*QDDS', '',"  
 	      		+ "   '', '', ''"   //User, Job, Program
 	      		//+ ") ) as x where SEQUENCE_NUMBER >= " + tblMeta.getLastRefresh() + " )"
