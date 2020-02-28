@@ -159,7 +159,9 @@ class OVSsrc {
    }
    //public boolean initSrcQuery(String whereClause){
    public boolean initSrcQuery(boolean isInit){
-	   markThisRun();
+	   if(isInit) {
+	     markThisRun();   // otherwise, done in initSrcLogQuery
+	   }
 	   String whereClause;
 	   if(isInit) {
 		   whereClause = "";
