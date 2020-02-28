@@ -368,7 +368,7 @@ class OVSsrc {
 	      		+ ") ) as x "
 	      		;
 	    	 	lrRset=srcStmt.executeQuery(strSQL);
-	         
+	            //I guess it could be 0 when DB2 just switched log file.
 	    	 	if (lrRset.next()) {
 	        	  seqThisFresh = lrRset.getLong(1);  
 	    	 	}

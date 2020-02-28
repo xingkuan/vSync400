@@ -420,7 +420,12 @@ class OVSmeta {
 		tsThisRefresh = thisRefreshHostTS;
 	}
 	public void setRefreshSeq(long thisRefreshSeq) {
-		seqThisRef=thisRefreshSeq;
+		if(thisRefreshSeq>0) {
+			seqThisRef=thisRefreshSeq;
+		}else {
+			seqThisRef=seqLastRef;
+			ovLogger.info("...hmm, got a 0 for SEQ# for srcTbl " + srcTable + ". The last one: " + seqLastRef);
+		}
 	}
 
    
