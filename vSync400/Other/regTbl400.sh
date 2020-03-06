@@ -36,6 +36,7 @@ java -Djava.security.egd=file:/dev/../dev/urandom -cp ./bin:$CLASSPATH com.guess
 read -p "regsiter. Press enter to continue ..."
 sqlplus $repUser/$repPwd@$repDB @repoTblDDL.sql
 sqlplus $repUser/$repPwd@$repDB @repoColsDDL.sql
+sqlplus $repUser/$repPwd@$repDB @repoJ400row.sql
 
 read -p "create tgt tbl in vertica. Press enter to continue ..."
 vsql -h$VHOST -U$VUSER -w -U dbadmin -w$VPASS -f $OUTDIR/verticaDDL.sql

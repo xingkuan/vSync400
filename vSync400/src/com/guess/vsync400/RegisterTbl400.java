@@ -283,6 +283,18 @@ System.out.println(outPath);
 		      verticaDDL.close();
 		      repoInsTbl.close();
 		      repoInsCols.close();
+		      
+		      FileWriter repoJournalRow = new FileWriter(new File(outPath + "repoJ400row.sql"));
+		      String jRow = "merge into VERTSNAP.sync_journal400 a \n" + 
+		      		"using (select distinct source_db_id, source_log_table from VERTSNAP.sync_table where table_id>=1000 and table_id <2000 ) b \n" + 
+		      		"on (a.source_db_id = b.source_db_id and a.source_log_table=b.source_log_table) \n" + 
+		      		"when not matched then \n" + 
+		      		"  insert (a.source_db_id, a.source_log_table) \n" + 
+		      		"  values (b.source_db_id, b.source_log_table) \n" 
+		      		;
+		      repoJournalRow.write(jRow);
+		      repoJournalRow.close();
+		      
 	      }else {
 	    	  System.out.println("TableID " + tblID + " has been used already!");
 	      }

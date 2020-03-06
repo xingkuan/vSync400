@@ -57,9 +57,7 @@ class OVSsync
 
 	  tProc.syncTblsByPoolID(poolID, jobID);
 	  
-//	  consumer.close();
-
-	  
+  
 //	  test();
 
    }

@@ -81,6 +81,46 @@ class OVSrepo {
    }
    
 
+   public List<String> getDB2TablesOfJournal(int dbID, String journal) {
+	   List<String> tList = new ArrayList<String>();
+	   String strSQL;
+       OVScred repCred = dbCred[0];
+       
+      strSQL = "select source_schema||'.'||source_table from sync_table where source_db_id = " + dbID + " and source_log_table='" + journal + "' order by 1";
+	      
+       // This shortterm solution is only for Oracle databases (as the source)
+	   try {
+           Class.forName("oracle.jdbc.OracleDriver"); 
+           repConn = DriverManager.getConnection(repCred.getURL(), repCred.getUser(), repCred.getPWD());
+           repConn.setAutoCommit(false);
+           repStmt = repConn.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_UPDATABLE);
+           rRset = repStmt.executeQuery(strSQL);
+           while(rRset.next()){
+               //Retrieve by column name
+               String tbl  = rRset.getString(1);
+               tList.add(tbl);
+            }
+        } catch(SQLException se){
+           ovLogger.error("OJDBC driver error has occured" + se);
+        }catch(Exception e){
+            //Handle errors for Class.forName
+        	ovLogger.error(e);
+         }finally {
+        	// make sure the resources are closed:
+        	 try{
+        		if(repStmt !=null)
+        			repStmt.close();
+        	 }catch(SQLException se2){
+        	 }
+             try{
+                 if(repConn!=null)
+                    repConn.close();
+             }catch(SQLException se){
+             }
+         }
+	   
+	   return tList;
+   }  
    
    /*
     * 07/24: return list of tbls belongs to a pool

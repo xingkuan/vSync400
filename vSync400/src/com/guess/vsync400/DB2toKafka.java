@@ -84,7 +84,7 @@ public class DB2toKafka {
 	//open jdbc connection to DB2, and send to each journal entry to the a topic
 	//   of the topic of the same name.
 	private void replicate(){
-		int dbID;
+		int srcDBid;
 		String jLib;
 		String jFile;
 
@@ -95,12 +95,12 @@ public class DB2toKafka {
 			//1. although technically can handle different source DB, but it is not; instead, simply error out;
 			String[] tokens = jName.split("[.]");
 			if(tokens.length==3) {
-				dbID=Integer.parseInt(tokens[0]);
+				srcDBid=Integer.parseInt(tokens[0]);
 				jLib=tokens[1];
 				jFile=tokens[2];
 	
 				ovLogger.info(" replicating: " + jName);
-				replicate(dbID, jLib, jFile);
+				replicate(srcDBid, jLib, jFile);
 				ovLogger.info(" finished: " + jName);
 
 			 }else {
@@ -113,6 +113,8 @@ public class DB2toKafka {
 	private void replicate(int dbID, String jLib, String jName){
 	    ProducerRecord<Long, String> aMsg;
 	    //ProducerRecord<String, String> aMsg;
+	   
+	    List<String> tblList;
 	    
 		//JDBC result of "Display_jounral(), and iterate through it:
 		OVSsrc tblSrc = new OVSsrc();
@@ -127,7 +129,7 @@ public class DB2toKafka {
 		tblSrc.initForKafka();
 
 	    tblSrc.initSrcLogQuery400();
-        
+	    tblList = dbMeta.getDB2TablesOfJournal(dbID, jLib+"."+jName);
         
     	//the message to be formated as: SEQ#:RRN:TS
 
@@ -140,11 +142,11 @@ public class DB2toKafka {
 				rrn=srcRset.getInt("RRN");
 				seq=srcRset.getLong("SEQNBR");
 				srcTbl=srcRset.getString("SRCTBL");
-
-				//new ProducerRecord<>("topic", index, "Hello Mom " + index);
-				aMsg = new ProducerRecord<Long, String>(srcTbl, seq, String.valueOf(rrn));
-				//producer.send(aMsg);
-				RecordMetadata metadata = producer.send(aMsg).get();
+				// ignore those for unregister tables:
+				if (tblList.contains(srcTbl)) {
+					aMsg = new ProducerRecord<Long, String>(srcTbl, seq, String.valueOf(rrn));
+					RecordMetadata metadata = producer.send(aMsg).get();
+				}
 			}
 			ovLogger.info("   last Journal Seq #: " + seq);
 			metrix.sendMX("JournalSeq,jobId="+jobID+",journal="+srcTbl+" value=" + seq + "\n");
