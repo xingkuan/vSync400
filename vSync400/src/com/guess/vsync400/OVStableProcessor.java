@@ -2,8 +2,11 @@ package com.guess.vsync400;
 
 import java.io.*;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.util.*;
 
+import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -15,25 +18,32 @@ import org.apache.logging.log4j.Logger;
 */
 
 class OVStableProcessor {//. extends Thread {
+   OVSmeta tblMeta;	
    OVStable ovTable = new OVStable();
    OVSrepo dbMeta = new OVSrepo();
-
+   
+   private KafkaConsumer<Long, String> kafkaConsumer;
+   
    String jobID="";
    int tblID=-1;
 
    private static final Logger ovLogger = LogManager.getLogger();
 
 // 07/18: go through eatch table in the pool, and sync them accordingly.
-   public void syncTblsByPoolID(int poolID) {
+   public void syncTblsByPoolID(int poolID, String jID) {
+	  jobID=jID+"_"+poolID;
+	  
 	  List<Integer> tblIDs = dbMeta.getTblsByPoolID(poolID); 
 	  for (int tid: tblIDs){
-		  syncTblByID(tid, poolID);
+		  //syncTblByID(tid, poolID);
+		  syncTblByID(tid);
 	  }
    }
    
    //put toolID there, so Grafana dashboard can be serperated according to poolID 
-   private void syncTblByID(int tblID, int pID) {
-	  init(tblID, "syncTbl"+pID);
+   //private void syncTblByID(int tblID, int pID) {
+   private void syncTblByID(int tblID) {
+	  init(tblID);
 	  refresh();
    }
 //JOHNLEE, 07/24, replace the run() {}? not a good abstraction; should be re-orged!
@@ -43,22 +53,20 @@ class OVStableProcessor {//. extends Thread {
    }
    
  
-//.   public boolean init(int tblID, String lbl) {
-   private boolean init(int tid, String lbl) {
+   //private boolean init(int tid, String lbl) {
+   private boolean init(int tid) {
       // initializes table tblID.  lbl is simply a label to make it easier to filter logs and output based on the lbl content
       boolean rtv;
-      jobID = lbl;
-      tblID = tid;  //.JLEE
+      //jobID = lbl;
+      tblID = tid;  
       
       ovLogger.info("Initializing tblID: " + tblID + ". jobID " + jobID + ".");
       
       rtv=true;
-      ovTable=null;
-      
-      ovTable = new OVStable();
-      ovTable.setDbMeta(dbMeta);
-      ovTable.setTableID(tblID);
 
+      tblMeta.setTableID(tblID);
+      tblMeta.init(jobID);
+      
       if (ovTable.init(jobID)) {
       } else {
          close();
@@ -71,30 +79,46 @@ class OVStableProcessor {//. extends Thread {
    public void setDbMeta(OVSrepo dbm) {
       dbMeta=dbm;
    }
+   public void setOVSmeta(OVSmeta md) {
+	   tblMeta=md;
+	   ovTable.setOVSmeta(md);
+   }
+   
+   public void setDB2KafkaMeta(OVSmetaJournal400 km) {
+	   ovTable.setDB2KafkaMeta(km);
+   }   
+/*   public void saveReplicateKafka()
+   {
+	   db2KafkaMeta.saveReplicateKafka();
+   }
+   */
    public void close() {
       ovTable.closeMeta();
       ovTable.close();
       ovTable=null;
    }
 
-   public void auditTbls(int pID) {
+   public void auditTbls(int pID, String jID) {
+	  jobID=jID+"_"+pID;
 	  List<Integer> tblIDs = dbMeta.getTblsByPoolID(pID);
 	  for (int tid: tblIDs){
-		  // TOTO, John, 2018.02.01: very confusing logic; Need re-org the code here.
-		  init(tid, "AudTbl"+pID);
+		  init(tid);
 		  ovTable.audit(jobID);
 		  close();
 	  }	      
    }
    
-   public void deactivate(int tblID, String jobID) {
-		  init(tblID, jobID);
-	      ovTable.tblStop();
+   public void deactivate(int tID, String jID) {
+	    jobID=jID+"_"+tID;
+		init(tblID);
+	    ovTable.tblStop();
 	}
    
 //.   public void procInitDefault() {
-   public void procInitDefault(int tblID, String jobID) {
-	  init(tblID, jobID);   //. JLEE. 07/18: moved it there so don't need to call is by caller.
+   public void procInitDefault(int tID, String jID) {
+	  jobID= jID + "_" + tID;
+	  int tblID = tblMeta.getTableID();  //which should be the same as tID 
+	  init(tblID);   //. JLEE. 07/18: moved it there so don't need to call is by caller.
 	   
       int i = ovTable.getDefInitType();  //. JLEE 07/14: from the table, all are 1 
       switch (i) {
@@ -131,7 +155,7 @@ class OVStableProcessor {//. extends Thread {
             if (rc> ovTable.getRecordCountThreshold()) {
                ovLogger.info("Threshold Exceeded - Reloading Table");
                procStop();
-               procInitDefault(tblID, jobID);
+               procInitDefault(tblMeta.getTableID(), jobID);
                flg=false;
             }
       		break;
@@ -151,7 +175,8 @@ class OVStableProcessor {//. extends Thread {
       	    flg=false;
       		break;
       }
- 
+
+	//ovTable.tblRefreshTry();
       if (flg) {
          try {
 			ovTable.tblRefresh();
@@ -160,7 +185,6 @@ class OVStableProcessor {//. extends Thread {
 			e.printStackTrace();
 		}
       } 
-      
    }
 
    private  void initType1() {
@@ -178,5 +202,9 @@ class OVStableProcessor {//. extends Thread {
          ovLogger.info("jobID: " + jobID + " Init type2 not successful");
       }
    }
+
+public void setKafkaConsumer(KafkaConsumer<Long, String> consumer) {
+	kafkaConsumer=consumer;
+}
 
  }    

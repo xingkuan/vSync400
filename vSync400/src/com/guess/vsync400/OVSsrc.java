@@ -27,6 +27,7 @@ import org.apache.logging.log4j.LogManager;
 class OVSsrc {
    private OVScred srcCred;
    private OVSmeta tblMeta;
+   private OVSmetaJournal400 jMeta400;
    private Connection srcConn;
    private Statement srcStmt;
    private boolean srcConnOpen;
@@ -41,8 +42,7 @@ class OVSsrc {
    private String[] xformFctn;
    private int logCnt;
    private String label;
-//.   private OVSlogger ovLogger;
-//   private Logger ovLogger;
+
    
    private int connAtmptLim=5;
    private int AtmptDelay=5000;
@@ -56,13 +56,6 @@ class OVSsrc {
    
    private static final Logger ovLogger = LogManager.getLogger();
    
-//.   public void setLogger(OVSlogger ol) {
-//.      ovLogger=ol;
-//.   }
-//   public void setLogger(Logger ol) {
-//	      ovLogger=ol;
-//	   }
-
    public boolean init() {
       label=">";
       return linit();
@@ -151,17 +144,111 @@ class OVSsrc {
 
       return rtv;
    }
+   public boolean initForKafka() {
+	      label=jMeta400.getLabel();
+	      
+		  jLibName = jMeta400.getJournalLib();
+		  jName = jMeta400.getJournalName();
+	      
+	      return linit400();
+	   }
+   private boolean linit400() {
+	      int attempts;
+	      //  initializes the connection
+	      
+	      // initialize variables
+	      isError=false;
+	      currState=0;
+		  boolean rtv = true;
+	     srcConnOpen=false;
+	     srcStmtOpen=false;
+	     
+
+	      //test for db type oracle and if it is load oracle driver
+	      srcCred=jMeta400.getSrcCred();
+	      if (srcCred.getType() ==1) {
+	         try {
+	            Class.forName("oracle.jdbc.OracleDriver"); 
+	         } catch(ClassNotFoundException e){
+	            ovLogger.error(label + " Driver error has occured");
+	            e.printStackTrace();
+		         rtv = false;
+	            return rtv;
+	         }
+	      } else if (srcCred.getType() == 3) {
+	          try {
+	        	  Class.forName("com.ibm.as400.access.AS400JDBCDriver");  
+	           } catch(ClassNotFoundException e){
+	              ovLogger.error(label + " Driver error has occured");
+	              e.printStackTrace();
+	  	         rtv = false;
+	              return rtv;
+	           }
+	    	  
+	      }else {
+	         ovLogger.error(label + " source db type not supported");
+	         rtv=false;
+	         return rtv;
+	      }
+	      
+	      attempts=0;
+	      while (attempts<connAtmptLim ) {
+	         attempts++;
+	         
+	      try {
+	         ovLogger.info(label + " conn attempt " + attempts);
+	         // this attempts a reset from a prior exception
+	         close();
+	         //establish DB connection
+	         srcConn = DriverManager.getConnection(srcCred.getURL(), srcCred.getUser(), srcCred.getPWD());
+	         srcConnOpen=true;
+	         srcConn.setAutoCommit(false);
+	         srcStmt = srcConn.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_UPDATABLE);
+	         srcStmtOpen=true;
+	         // all success, burn rest of attempts
+	         attempts=connAtmptLim;
+	      } catch(SQLException e) {
+	         //System.out.println(label + " tgt cannot connect to db");
+	         //System.out.println(label + e.getMessage());
+	//.         ovLogger.log(label + " src cannot connect to db - init failed ");
+	         ovLogger.error(label + " src cannot connect to db - init failed ");
+	//.         ovLogger.log(label + e.getMessage());
+	         ovLogger.error(label + e.getMessage());
+	         rtv=false;
+	         msWait(AtmptDelay);
+	      }
+	      
+	      }
+
+	      return rtv;
+	   }
    public void markThisRun(){
 	  //2020.02.24: 
 	  //   before doing anything, record the current Timestamp and Sequence_number of the Journal:
 	   setThisRefreshHostTS();
 	   setThisRefreshSeq();
    }
+   public boolean initSrcQueryOfRRNList(String rrns) {
+	      boolean rtv=true;
+	      String sqlStmt = tblMeta.getSQLSelect() + " where rrn(a) in (" + rrns + ")";
+	      //String sqlStmt = "select * from johnlee2.testtbl2";
+	      try {
+	    	 srcStmt = srcConn.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
+	         sRset=srcStmt.executeQuery(sqlStmt);
+	      } catch(SQLException e) {
+	         ovLogger.error(label + " recordset not created");
+	         ovLogger.error(e);
+	         rtv=false;
+	      }
+	      
+	      return rtv;
+   }
    //public boolean initSrcQuery(String whereClause){
    public boolean initSrcQuery(boolean isInit){
 	   if(isInit) {
 	     markThisRun();   // otherwise, done in initSrcLogQuery
 	   }
+	   
 	   String whereClause;
 	   if(isInit) {
 		   whereClause = "";
@@ -170,9 +257,7 @@ class OVSsrc {
         		+ " select distinct(COUNT_OR_RRN) "
         		+ " FROM table (Display_Journal('" + jLibName + "', '" + jName + "', "
         		+ "   '', '*CURCHAIN', "
-        		//+ "   cast('" + strTS +"' as TIMESTAMP), "    //pass-in the start timestamp;
         		+ "   cast(null as TIMESTAMP), "    //pass-in the start timestamp;
-        		//+ "   cast(null as decimal(21,0)), "    //starting SEQ #
         		+ "   cast(" + tblMeta.getSeqLastRefresh() + " as decimal(21,0)), "    //starting SEQ #
         		+ "   'R', "   //JOURNAL CODE: 
         		+ "   '',"    //JOURNAL entry: UP,DL,PT,PX,UR,DR,UB
@@ -234,6 +319,47 @@ class OVSsrc {
       } catch(SQLException e) {
          ovLogger.error("initSrcLogQuery() failure: " + e);
          rtv=false;
+      }
+      return rtv;
+   }
+   public boolean initSrcLogQuery400() {
+	   markThisRun();
+	   
+      // initializes the source log query
+      boolean rtv=true;
+      
+      String strLastSeq;
+      String strReceiver;
+
+
+      if (jMeta400.getSeqLastRefresh() == 0) {
+          ovLogger.error("initSrcLogQuery(): " + jLibName + "." + jName + "is not initialized.");
+    	  rtv=false;
+      }else {
+    	  strLastSeq =  Long.toString(jMeta400.getSeqLastRefresh());
+    	  strReceiver="*CURCHAIN";
+      
+	      try {
+	   	 //  String strTS = new SimpleDateFormat("yyyy-MM-dd-HH.mm.ss.SSSSSS").format(tblMeta.getLastRefresh());
+	    	  srcStmt = srcConn.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
+	    	  String StrSQLRRN =  " select COUNT_OR_RRN as RRN,  SEQUENCE_NUMBER AS SEQNBR, trim(both from SUBSTR(OBJECT,11,10))||'.'||trim(both from SUBSTR(OBJECT,21,10)) as SRCTBL"
+	    	              		+ " FROM table (Display_Journal('" + jLibName + "', '" + jName + "', "
+	    	              		+ "   '', '" + strReceiver + "', "
+	    	              		//+ "   cast('" + strTS +"' as TIMESTAMP), "    //pass-in the start timestamp;
+	    	              		+ "   cast(null as TIMESTAMP), "    //pass-in the start timestamp;
+	    	              		+ "   cast(" + strLastSeq + " as decimal(21,0)), "    //starting SEQ #
+	    	              		+ "   'R', "   //JOURNAL CODE: record operation
+	    	              		+ "   '',"    //JOURNAL entry: UP,DL,PT,PX,UR,DR,UB
+	    	              		+ "   '', '', '*QDDS', '',"  //Object library, Object name, Object type, Object member
+	    	              		+ "   '', '', ''"   //User, Job, Program
+	    	              		+ ") ) as x where SEQUENCE_NUMBER >=" + strLastSeq + " and SEQUENCE_NUMBER <=" + seqThisFresh + " order by 2 asc"   // something weird with DB2 function: the starting SEQ number seems not takining effect
+	    	              		;
+	         sRset=srcStmt.executeQuery(StrSQLRRN);
+	         ovLogger.info("   opened src jrnl recordset: " + label);
+	      } catch(SQLException e) {
+	         ovLogger.error("initSrcLogQuery() failure: " + e);
+	         rtv=false;
+	      }
       }
       return rtv;
    }
@@ -326,65 +452,44 @@ class OVSsrc {
 
 	      tsThisRefesh = hostTS;
    }
-
    public long getThisRefreshSeq(){
 	   return seqThisFresh;
    }
-   
    private void setThisRefreshSeq(){
-	      int rtv;
 	      ResultSet lrRset;
 	      
 	      String strSQL;
-	 
-	      String strLastSeq;
-	      String strReceiver;
-	      //last is last; no difference. So:
-	      //if (tblMeta.getSeqLastRefresh() == 0) {
-	    	  strLastSeq = "null";
-	    	  strReceiver="";
-	      //}else {
-	    //	  strLastSeq =  Long.toString(tblMeta.getSeqLastRefresh());
-	    //	  // the max should alwas be from the current. Hopefully this will make it little faster. 
-	    //	  //strReceiver="*CURCHAIN";
-	    //	  strReceiver="";
-	    //  }
-	      
+   
 	      try {
 	    	 srcStmt = srcConn.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
 	    	 //locate the ending SEQUENCE_NUMBER of this run:
 	    	 strSQL = " select max(SEQUENCE_NUMBER) "
 	            		+ " FROM table (Display_Journal('" + jLibName + "', '" + jName + "', "
-	            		+ "   '', '" + strReceiver + "', "
+	            		+ "   '', '', "
 	            		+ "   cast(null as TIMESTAMP), "    //pass-in the start timestamp;
-	            		+ "   cast(" + strLastSeq + " as decimal(21,0)), "    //starting SEQ #
+	            		+ "   cast(null as decimal(21,0)), "    //starting SEQ #
 	            		+ "   'R', "   //JOURNAL cat: record operations
 	            		+ "   '',"    //JOURNAL entry: UP,DL,PT,PX,UR,DR,UB 
 	            + "   '', '', '*QDDS', '',"  
 	      		+ "   '', '', ''"   //User, Job, Program
-	      		//+ ") ) as x where SEQUENCE_NUMBER >= " + tblMeta.getLastRefresh() + " )"
 	      		+ ") ) as x "
 	      		;
 	    	 	lrRset=srcStmt.executeQuery(strSQL);
 	            //I guess it could be 0 when DB2 just switched log file.
 	    	 	if (lrRset.next()) {
-	        	  seqThisFresh = lrRset.getLong(1);  
+	    	 		seqThisFresh = lrRset.getLong(1);  
 	    	 	}
 	    	 	lrRset.close();
 
-    	 	//generate the list of RRNs:
-	    	 //   ... abandon it, considering the cases when the list is too long
-	    	 //   so keep the logic in OVStgt	
-	         
-	         
 	         srcStmt.close();
 	      } catch(SQLException e) {
 	         ovLogger.error(label + " error in setThisRefreshSeq(): "+ e); 
 	      }
-
-}
-
-
+   }
+   public long getCurrSeq(){
+	      return seqThisFresh;
+   }
+   
    
 //   public void delConsumedLog() throws SQLException {
 //      srcStmt.executeUpdate(" DELETE FROM " +  tblMeta.getSrcSchema() + "." +  tblMeta.getLogTable() +  " where  snaptime = '01-JUN-1910' "); 
@@ -407,6 +512,9 @@ class OVSsrc {
    public void setMeta(OVSmeta mta) {
       tblMeta=mta;
    }
+   public void setMeta400(OVSmetaJournal400 mta) {
+	   jMeta400=mta;
+	   }
    public void commit() throws SQLException {
       srcConn.commit();
    }
@@ -421,8 +529,8 @@ class OVSsrc {
       if (srcConnOpen) {
          srcConn.close();
          srcConnOpen=false;
+         ovLogger.info(label + " closed src db src");
       }
-      ovLogger.info(label + " closed src db src");
    }
    private  void msWait(int mSecs) {
       try {

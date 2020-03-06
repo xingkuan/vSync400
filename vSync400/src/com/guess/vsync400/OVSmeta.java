@@ -73,6 +73,8 @@ class OVSmeta {
    private boolean tgtUseAlt;
    private String label;
    private String srcTblAb7;
+   
+   private String journalLib, journalName;
 
    private Timestamp tsThisRefresh;   
    private long seqThisRef;
@@ -90,7 +92,6 @@ class OVSmeta {
       label=lbl;
       return linit();
    }
-
    private boolean linit() {
       // initialize variables
       currState=0;
@@ -191,6 +192,18 @@ class OVSmeta {
 
       return rtv;
    }
+//for injecting data into Kafka (for DB2/AS400), instead of table level; read all entries of a Journal (which could be for many tables 
+   public boolean initForKafka(int dbID, String jLib, String jName) {
+	   srcDBid = dbID;   
+	   label="Inject Kafka DBid: " + dbID;
+	   
+	   journalLib = jLib;
+	   journalName = jName;
+       srcCred=dbMeta.getCred(srcDBid);
+
+	   return true;
+   }
+
    
    private void initDBcreds() {
       // sets the db credentials for source and target classes
@@ -540,6 +553,9 @@ class OVSmeta {
    public void setTableID(int tid) {
       tableID=tid;
    }
+   public int getTableID() {
+	      return tableID;
+   }
    public int getDefInitType() {
       return defInitType;
    }
@@ -576,6 +592,9 @@ class OVSmeta {
    public String getSrcDbDesc() {
       return srcCred.getDesc();
    }
+   public int getSrcDBid() {
+	   return srcDBid;
+   }
    public void close() {
      try {                     
          rRset.close();
@@ -585,6 +604,15 @@ class OVSmeta {
          ovLogger.error(label + e.getMessage());
       }
 
+   }
+   public String getLabel() {
+	   return label;
+   }
+   public String getJournalLib() {
+	   return journalLib;
+   }
+   public String getJournalName() {
+	   return journalName;
    }
 
 }    

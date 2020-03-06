@@ -3,9 +3,15 @@ package com.guess.vsync400;
 import java.io.*;
 import java.util.*;
 import java.text.*;
+import java.time.Duration;
 import java.sql.*;
 
 import org.apache.logging.log4j.Logger;
+import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.common.TopicPartition;
 import org.apache.logging.log4j.LogManager;
 
 /*
@@ -23,7 +29,7 @@ class OVStable {
    OVScred srcCred;
    OVScred tgtCred;
    OVScred repCred;
-   int tableID;
+ //  int tableID;
    OVSsrc tblSrc;
    OVStgt tblTgt;
    OVSmeta tblMeta;
@@ -31,6 +37,8 @@ class OVStable {
    String jobID;
    String srcTblAb7;
 
+   OVSmetaJournal400 db2KafkaMeta;
+   
    private static final OVSmetrix metrix = OVSmetrix.getInstance();
    private static final Logger ovLogger = LogManager.getLogger();
 
@@ -38,26 +46,28 @@ class OVStable {
       boolean rtv=true;
  
       jobID = jID;
-      
+ 
+/*20200303      
       tblMeta = new OVSmeta();
       tblMeta.setDbMeta(dbMeta);
       
 
       tblMeta.setTableID(tableID);
       rtv = tblMeta.init(jobID);
+*/      
       srcTblAb7 = tblMeta.getSrcTable().substring(0,Math.min(7,tblMeta.getSrcTable().length()));
 
       // initialize source object
       tblSrc = new OVSsrc();
       tblSrc.setMeta(tblMeta);
       rtv = (tblSrc.init(jobID) && rtv);
-      ovLogger.info("connected to source. tblID: " + tableID + " - " + tblMeta.getSrcDbDesc() + ". JobID: "+ jobID  );
+      ovLogger.info("connected to source. tblID: " + tblMeta.getTableID() + " - " + tblMeta.getSrcDbDesc() + ". JobID: "+ jobID  );
      
       // initialize target object
       tblTgt = new OVStgt();
       tblTgt.setMeta(tblMeta);
       rtv = (tblTgt.init(jobID) && rtv);
-      ovLogger.info("connected to target. tblID: " + tableID + " - " + tblMeta.getTgtTable() + ". JobID: "+ jobID  );
+      ovLogger.info("connected to target. tblID: " + tblMeta.getTableID() + " - " + tblMeta.getTgtTable() + ". JobID: "+ jobID  );
 
       return rtv;
    }
@@ -75,10 +85,16 @@ class OVStable {
       ){
          tblMeta.setCurrentState(1);   // set current state to initializing
          tblMeta.markStartTime();
+      
+         //Timestamp ts = new Timestamp(System.currentTimeMillis());
          try {
             tblSrc.initSrcQuery(true);
-            
-            ovLogger.info("src query initialized. tblID: " + tableID +". Job " + jobID );
+            ovLogger.info("src query initialized. tblID: " + tblMeta.getTableID() +". Job " + jobID );
+
+            db2KafkaMeta.setRefreshTS(tblSrc.getThisRefreshHostTS());
+            db2KafkaMeta.setRefreshSeq(tblSrc.getThisRefreshSeq());
+            tblMeta.setRefreshTS(tblSrc.getThisRefreshHostTS());
+            tblMeta.setRefreshSeq(tblSrc.getThisRefreshSeq());
 
             tblTgt.setSrcRset(tblSrc.getSrcResultSet());
             recordCnt=tblTgt.initLoadType1();
@@ -86,19 +102,18 @@ class OVStable {
             tblMeta.setRefreshCnt(recordCnt);
             errorCnt=tblTgt.getErrCnt();
             if(errorCnt>0)
-            	metrix.sendMX("errCnt,jobId="+jobID+",tblID="+srcTblAb7+"~"+tableID+" value=" + errorCnt + "\n");
+            	metrix.sendMX("errCnt,jobId="+jobID+",tblID="+srcTblAb7+"~"+tblMeta.getTableID()+" value=" + errorCnt + "\n");
             //ovLogger.info("JobID: " + jobID + ", tblID: " + tableID  + " stats saved");
 
             tblTgt.commit();
             tblSrc.commit();
-            ovLogger.info("Refreshed tblID: " + tableID + ". JobID: " + jobID);
+            ovLogger.info("Refreshed tblID: " + tblMeta.getTableID() + ". JobID: " + jobID);
             
             tblMeta.markEndTime();
-            tblMeta.setRefreshTS(tblSrc.getThisRefreshHostTS());
-            tblMeta.setRefreshSeq(tblSrc.getThisRefreshSeq());
             //tblMeta.saveInitStats(jobID, hostTS); 
             tblMeta.saveInitStats(jobID); 
-
+            db2KafkaMeta.saveReplicateKafka();
+            
             if (recordCnt < 0) {
                tblMeta.setCurrentState(7);   //broken - suspended
                rtv=false;
@@ -107,7 +122,7 @@ class OVStable {
             }
          } catch (SQLException e) {
             rtv=false;
-            ovLogger.error("exception in tblInitType1() for (tblID: " + tableID +"): "  + e.getMessage());
+            ovLogger.error("exception in tblInitType1() for (tblID: " + tblMeta.getTableID() +"): "  + e.getMessage());
          } finally {
 		      if (!rtv) {
                  try {
@@ -116,12 +131,12 @@ class OVStable {
 // .			        tblSrc.setTriggerOff(); 
                    tblMeta.setCurrentState(0);
                  } catch(SQLException e) {
-                    ovLogger.error("JobID: " + jobID + ", tblID: " + tableID + e.getMessage());
+                    ovLogger.error("JobID: " + jobID + ", tblID: " + tblMeta.getTableID() + e.getMessage());
                  }
 			  }
          }
       } else { 
-         ovLogger.error("Cannot initialize. tblID " + tableID +" not in correct state.");
+         ovLogger.error("Cannot initialize. tblID " + tblMeta.getTableID() +" not in correct state.");
          rtv=false;
       }
       return rtv;
@@ -134,7 +149,7 @@ class OVStable {
   public boolean tblInitType2(){
       if (tblMeta.getCurrState() == 0){
          //  initialize table
-         ovLogger.info("JobID: " + jobID + ", tblID: " + tableID + " init type 2");
+         ovLogger.info("JobID: " + jobID + ", tblID: " + tblMeta.getTableID() + " init type 2");
          tblMeta.setCurrentState(1);   // set current state to initializing
 
          tblMeta.markStartTime();
@@ -147,7 +162,7 @@ class OVStable {
          }
       } else { 
          //System.out.println(label + "Cannot initialize... not in correct state");
-         ovLogger.error("JobID: " + jobID + ", tblID: " + tableID + " Cannot initialize... not in correct state");
+         ovLogger.error("JobID: " + jobID + ", tblID: " + tblMeta.getTableID() + " Cannot initialize... not in correct state");
       }
       return true;
    }
@@ -155,9 +170,9 @@ class OVStable {
    public void tblLoadSwap() {
       tblMeta.setTgtUseAlt();
       if (tblInitType1()) {
-         ovLogger.info("tblID: " + tableID + " Init successful. JobID: " + jobID );
+         ovLogger.info("tblID: " + tblMeta.getTableID() + " Init successful. JobID: " + jobID );
       } else {
-          ovLogger.info("tblID: " + tableID + " Init failed. JobID: " + jobID );
+          ovLogger.info("tblID: " + tblMeta.getTableID() + " Init failed. JobID: " + jobID );
       }
       tblTgt.swapTable();
    }
@@ -173,9 +188,9 @@ class OVStable {
        tblMeta.saveAudit(srcRC, tgtRC);
        rowDiff = srcRC - tgtRC;
 
-      metrix.sendMX("rowDiff,jobId="+jobID+",tblID="+srcTblAb7+"~"+tableID+" value=" + rowDiff + "\n");
-      metrix.sendMX("rowSrc,jobId="+jobID+",tblID="+srcTblAb7+"~"+tableID+" value=" + srcRC + "\n");
-      metrix.sendMX("rowTgt,jobId="+jobID+",tblID="+srcTblAb7+"~"+tableID+" value=" + tgtRC + "\n");
+      metrix.sendMX("rowDiff,jobId="+jobID+",tblID="+srcTblAb7+"~"+tblMeta.getTableID()+" value=" + rowDiff + "\n");
+      metrix.sendMX("rowSrc,jobId="+jobID+",tblID="+srcTblAb7+"~"+tblMeta.getTableID()+" value=" + srcRC + "\n");
+      metrix.sendMX("rowTgt,jobId="+jobID+",tblID="+srcTblAb7+"~"+tblMeta.getTableID()+" value=" + tgtRC + "\n");
  
 //TODO: remove it .. it is here for immediate Prod needs. 08/02/2017
       writeAudit(srcRC, tgtRC, rowDiff);
@@ -188,7 +203,7 @@ class OVStable {
 	   try{
 	   FileWriter fstream = new FileWriter(initLogDir + "/vSyncAudit.log", true);
 	   BufferedWriter out = new BufferedWriter(fstream);
-	   out.write("TableID: " + tableID + ", TableName: " + tblMeta.getSrcSchema() + '.' + tblMeta.getSrcTable() 
+	   out.write("TableID: " + tblMeta.getTableID() + ", TableName: " + tblMeta.getSrcSchema() + '.' + tblMeta.getSrcTable() 
 	       + ", srcCnt: " + srcRC 
 	       + ", tgtCnt: " + tgtRC
 	       + ", diffCnt: " + diffRC
@@ -198,123 +213,212 @@ class OVStable {
        System.out.println("Error writing audit file: " + e.getMessage());
     }
    }
+   
+   private KafkaConsumer<Long, String> createKafkaConsumer(String topic){
+		Properties propsx = new Properties();
+		propsx.put("bootstrap.servers", "usir1xrvkfk01:9092,usir1xrvkfk02:9092");
+	    propsx.put("group.id", jobID);
+	    propsx.put("enable.auto.commit", "true");
+	    propsx.put("auto.commit.interval.ms", "1000");
+	    propsx.put("auto.offset.reset", "earliest");
+	    propsx.put("session.timeout.ms", "30000");
+	    propsx.put("key.deserializer", "org.apache.kafka.common.serialization.LongDeserializer");
+	    propsx.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
+	    
+	    KafkaConsumer<Long, String> consumerx = new KafkaConsumer<Long, String>(propsx);
+	    //consumerx.subscribe(Arrays.asList("JOHNLEE2.TESTTBL2"));
+	    consumerx.subscribe(Arrays.asList(topic));
+	    
+	    return consumerx;
+   }
+   public boolean tblRefreshTry() {
+	   KafkaConsumer<Long, String> consumerx = createKafkaConsumer("JOHNLEE2.TESTTBL2");
+	   
+	    int noRecordsCount=0, cntRRN=0;
+	    int giveUp=10; 
+	    String rrnList="";
+	    long lastJournalSeqNum=0l;
+	    
+	    while (true) {
+	      ConsumerRecords<Long, String> records = consumerx.poll(0);
+	      
+	        if (records.count()==0) {
+	            noRecordsCount++;
+	            if (noRecordsCount > giveUp) break;
+	            else continue;
+	        }
+	        
+	        for (ConsumerRecord<Long, String> record : records) {
+	            //System.out.printf("offset = %d, key = %s, value = %s%n", record.offset(), record.key(), record.value());
+	        	if(cntRRN==0)
+	        		rrnList = record.value();
+	        	else
+	        		rrnList = rrnList + "," + record.value();
+	            lastJournalSeqNum=record.key();
+	            cntRRN++;
+	        }
+	      
+		        //in case there are more in Kafka broker:
+		        rrnList="";
+		        noRecordsCount=0;
+	      
+	      for (ConsumerRecord<Long, String> record : records) {
 
+	        System.out.println("key: " + record.key()); 
+	        System.out.println("value: " + record.value()); 
+
+	        System.out.println("Partition: " + record.partition() 
+	            + " Offset: " + record.offset()
+	            + " Value: " + record.value() 
+	            + " ThreadID: " + Thread.currentThread().getId()  );
+	         
+	      }
+	    }
+	   
+	   return true;
+   }
+   //public boolean tblRefresh(KafkaConsumer<Long, String> kConsumer) throws SQLException {
    public boolean tblRefresh() throws SQLException {
+   //public boolean tblRefresh() throws SQLException {
       boolean rtv=true;
       int recordCnt;
       int errorCnt;
       int srcRC;
       int tgtRC;
       
+	   
+	    int noRecordsCount=0, cntRRN=0;
+//	    int giveUp=10; 
+	    String rrnList="";
+	    long lastJournalSeqNum=0l;
+		  boolean success=true;
+	    
+      
+      final int giveUp = Integer.parseInt(conf.getConf("kafkaMaxEmptyPolls"));
+      final int pollWaitMil = Integer.parseInt(conf.getConf("kafkaPollWaitMill"));
+      
       srcRC=0;
       tgtRC=0;
-      
-      Long lastJournalSeqNum;
 
       if (tblMeta.getCurrState() == 2 || tblMeta.getCurrState() == 5) {
-         try {
-            tblSrc.initSrcLogQuery();
-
-            tblTgt.setSrcRset(tblSrc.getSrcResultSet());
-
       	  String srcLog = tblMeta.getLogTable();
       	  String[] res = srcLog.split("[.]", 0);
       	  String jLibName = res[0];
       	  String jName = res[1];
-            
-//String strTS = new SimpleDateFormat("yyyy-MM-dd-HH.mm.ss.SSSSSS").format(tblMeta.getLastRefresh());
-	tblMeta.markStartTime();
 
-lastJournalSeqNum=tblTgt.dropStaleRecords(jobID,srcTblAb7,tableID);
-if(lastJournalSeqNum>0) {
-    tblMeta.setCurrentState(3);   // set current state to being refreshed
-/*    String whereStr = " where rrn(a) in (" 
-            		+ " select distinct(COUNT_OR_RRN) "
-            		+ " FROM table (Display_Journal('" + jLibName + "', '" + jName + "', "
-            		+ "   '', '*CURCHAIN', "
-            		//+ "   cast('" + strTS +"' as TIMESTAMP), "    //pass-in the start timestamp;
-            		+ "   cast(null as TIMESTAMP), "    //pass-in the start timestamp;
-            		//+ "   cast(null as decimal(21,0)), "    //starting SEQ #
-            		+ "   cast(" + tblMeta.getSeqLastRefresh() + " as decimal(21,0)), "    //starting SEQ #
-            		+ "   'R', "   //JOURNAL CODE: 
-            		+ "   '',"    //JOURNAL entry: UP,DL,PT,PX,UR,DR,UB
-            + "   '" + tblMeta.getSrcSchema() + "', '" + tblMeta.getSrcTable() + "', '*QDDS', '',"  //Object library, Object name, Object type, Object member
-      		+ "   '', '', ''"   //User, Job, Program
-      		+ ") ) as x )"
-;            
-            
-            tblSrc.initSrcQuery(whereStr );
-*/          tblSrc.initSrcQuery(false);
+		  //String strTS = new SimpleDateFormat("yyyy-MM-dd-HH.mm.ss.SSSSSS").format(tblMeta.getLastRefresh());
+		  tblMeta.markStartTime();
+		
+		  //build list of RRN is the format of "1,2,3"
+	   	   //KafkaConsumer<Long, String> consumerx = createKafkaConsumer("JOHNLEE2.TESTTBL2");
+		  String topic=tblMeta.getSrcSchema()+"."+tblMeta.getSrcTable();
+		   KafkaConsumer<Long, String> consumerx = createKafkaConsumer(topic);
 
-            ovLogger.info("Source query initialized. tblID: " + tableID + " - " + tblMeta.getSrcDbDesc() );
-            tblTgt.setSrcRset(tblSrc.getSrcResultSet());
-            
-            recordCnt=tblTgt.initLoadType1();
-            ovLogger.info("Refreshed tblID: " + tableID + ", record Count: " + recordCnt);
+		  while (true) {     
+				//blocking call:
+		        //ConsumerRecords<Long, String> records =	consumerx.poll(Duration.ofMillis(pollWaitMil));
+		        ConsumerRecords<Long, String> records =	consumerx.poll(0);
+		        if (records.count()==0) {
+		            noRecordsCount++;
+		            if (noRecordsCount > giveUp) break;
+		            else continue;
+		        }
+		        
+		        for (ConsumerRecord<Long, String> record : records) {
+		            //System.out.printf("offset = %d, key = %s, value = %s%n", record.offset(), record.key(), record.value());
+		        	if(cntRRN==0)
+		        		rrnList = record.value();
+		        	else
+		        		rrnList = rrnList + "," + record.value();
+		        	
+		            lastJournalSeqNum=record.key();
+		            cntRRN++;
+		        }
+		        
+		       success = replicateRRNList(rrnList);
+		       if (!success) break;
+		        //in case there are more in Kafka broker:
+		        rrnList="";
+		        noRecordsCount=0;
+		  }
+ 		  
+		 //kafkaConsumer.close();   //to be called from OVSsync.
 
-            errorCnt=tblTgt.getErrCnt();
-            if(errorCnt>0) {
-            	metrix.sendMX("errCnt,jobId="+jobID+",tblID="+srcTblAb7+"~"+tableID+" value=" + errorCnt + "\n");
-            }
-            
-            tblMeta.markEndTime();
+		  java.sql.Timestamp ts = new java.sql.Timestamp(System.currentTimeMillis()); 
+		  //if no entries from Kafka, then simply mark this run:
+          tblMeta.markEndTime();
+		  if(cntRRN==0) {
+		   	ovLogger.info("tblID: " + tblMeta.getTableID() + "_____" + tblMeta.getSrcSchema() + "." + tblMeta.getSrcTable() + " has no change since last sync." );
 
-            tblMeta.setRefreshCnt(tblTgt.getRefreshCnt());
-            tblMeta.setRefreshTS(tblSrc.getThisRefreshHostTS());
-            tblMeta.setRefreshSeq(tblSrc.getThisRefreshSeq());
-            tblMeta.saveRefreshStats(jobID);
+		   	tblMeta.setRefreshCnt(0);
+		   	//tblMeta.setRefreshTS(tblSrc.getThisRefreshHostTS()); 
+		   	//tblMeta.setRefreshSeq(tblSrc.getThisRefreshSeq());
+		   	tblMeta.setRefreshTS(ts); 
+		   	tblMeta.setRefreshSeq(0);   //0 means keep the original value.
+		   	tblMeta.saveRefreshStats(jobID);
+		  }else{
+	        tblMeta.setRefreshCnt(cntRRN);
+	        tblMeta.setRefreshTS(ts);
+	        tblMeta.setRefreshSeq(lastJournalSeqNum);
+	        tblMeta.saveRefreshStats(jobID);
+		  }
+	       metrix.sendMX("errCnt,jobId="+jobID+",tblID="+srcTblAb7+"~"+tblMeta.getTableID()+" value=" + totalErrCnt + "\n");
+	       if(lastJournalSeqNum>0)
+	    	   metrix.sendMX("JournalSeq,jobId="+jobID+",tblID="+srcTblAb7+"~"+tblMeta.getTableID()+" value=" + lastJournalSeqNum + "\n");
 
-            metrix.sendMX("JournalSeq,jobId="+jobID+",tblID="+srcTblAb7+"~"+tableID+" value=" + lastJournalSeqNum + "\n");
-            
+	     if(!success) {
+		 	   ovLogger.info("tblID: " + tblMeta.getTableID() + ", " + tblMeta.getTableID() + " - " + tblMeta.getSrcDbDesc() + " commited" );
 
-            tblSrc.commit();
-     	   ovLogger.info("tblID: " + tableID + ", " + tableID + " - " + tblMeta.getSrcDbDesc() + " commited" );
+		       if (!success) {
+		           tblMeta.setCurrentState(7);   //broken - suspended
+		           //System.out.println(label + "refresh not succesfull");
+		           ovLogger.info("JobID: " + jobID + ", tblID: " + tblMeta.getTableID() + "refresh not succesfull");
+		        } else {
+		           tblMeta.setCurrentState(5);   //initialized
+		           //System.out.println(label + " <<<<<<<<<<<<  refresh successfull");
+		           ovLogger.info("JobID: " + jobID + ", tblID: " + tblMeta.getTableID() + " <<<<<  refresh successfull");
+		        }
+	     }
 
-            if (recordCnt < 0) {
-               tblMeta.setCurrentState(7);   //broken - suspended
-               //System.out.println(label + "refresh not succesfull");
-               ovLogger.info("JobID: " + jobID + ", tblID: " + tableID + "refresh not succesfull");
-            } else {
-               tblMeta.setCurrentState(5);   //initialized
-               //System.out.println(label + " <<<<<<<<<<<<  refresh successfull");
-               ovLogger.info("JobID: " + jobID + ", tblID: " + tableID + " <<<<<  refresh successfull");
-            }
-}else {
- ovLogger.info("tblID: " + tableID + "_____" + tblMeta.getSrcSchema() + "." + tblMeta.getSrcTable() + " has no change since last sync." );
- tblMeta.markEndTime();
-
- tblMeta.setRefreshCnt(0);
- tblMeta.setRefreshTS(tblSrc.getThisRefreshHostTS());
- tblMeta.setRefreshSeq(tblSrc.getThisRefreshSeq());
- tblMeta.saveRefreshStats(jobID);
-
-}
-         } catch (SQLException e) {
-            rtv=false;
-			ovLogger.error("TblRefresh() failed for tblID: " + tableID + e.getMessage());
-         } finally {
-		      if (!rtv) {
-               try {
-                  ovLogger.error("TblRefresh() failed for tblID: " + tableID + " JobID: " + jobID + ", tblID: " + tableID
-                    + " exception handling started " );
-                  tblTgt.rollback();
-                  ovLogger.error(" tblID: " + tableID + " - " + tblMeta.getSrcDbDesc()  
-                    + " exception handling tgt rolled back " );
-                  tblSrc.rollback();
-
-                  tblMeta.setCurrentState(5);
-               } catch(SQLException e) {
-                  ovLogger.error("JobID: " + jobID + ", tblID: " + tableID + e.getMessage());
-               }
-			   }
-		   }
      } else { 
-         ovLogger.error("JobID: " + jobID + ", tblID: " + tableID  + " No refresh for table state");
+         ovLogger.error("JobID: " + jobID + ", tblID: " + tblMeta.getTableID()  + " No refresh for table state");
          rtv=false;
      }
+     
       return rtv;
    }
 
+   int totalDelCnt, totalInsCnt, totalErrCnt;
+   private boolean replicateRRNList(String rrns) {
+	   boolean success=true;
+	   
+	   int rowCnt;
+	   try {
+			rowCnt = tblTgt.dropStaleRecordsOfRRNlist(rrns);
+		   ovLogger.info(jobID +  " deleted - " + rowCnt );
+		   totalDelCnt = totalDelCnt + rowCnt;
+		   
+	       tblSrc.initSrcQueryOfRRNList(rrns);
+	       ovLogger.info("Source query initialized. tblID: " + tblMeta.getTableID() + " - " + tblMeta.getSrcDbDesc() );
+	       tblTgt.setSrcRset(tblSrc.getSrcResultSet());
+	       rowCnt=tblTgt.initLoadType1();
+	       ovLogger.info("Refreshed tblID: " + tblMeta.getTableID() + ", record Count: " + rowCnt);
+	       if(rowCnt<0)
+	    	   success=false;
+	       totalInsCnt = totalInsCnt + rowCnt;
+	
+	       rowCnt=tblTgt.getErrCnt();
+	       totalErrCnt = totalErrCnt + rowCnt;
+	
+	       tblSrc.commit();
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+       
+       return success;
+    } 
+   
    public void tblStop(){
       if (tblMeta.getCurrState() != 0){
          //  initialize table
@@ -325,7 +429,7 @@ if(lastJournalSeqNum>0) {
 // .            tblSrc.setTriggerOff();
             tblSrc.commit();
             //System.out.println(label + "Table stopped");
-            ovLogger.info("Log for " + tableID + " stopped");
+            ovLogger.info("Log for " + tblMeta.getTableID() + " stopped");
          } catch (SQLException e) {
          }
 
@@ -383,12 +487,25 @@ if(lastJournalSeqNum>0) {
    public void settgtCred(OVScred ovsc) {
       tgtCred=ovsc;
    }
+   /*
    public void setTableID(int tid) {
       tableID=tid;
    }
-//JLEE, 07/18
    public int getTableID() {
 	      return tableID;
+   }*/
+   public void setOVSmeta(OVSmeta md) {
+	   tblMeta = md;
+   }
+   public void setDB2KafkaMeta(OVSmetaJournal400 km){
+	   db2KafkaMeta=km;
+   }
+
+   public String getJournalLib() {
+	   return tblMeta.getJournalLib();
+   }
+   public String getJournalName() {
+	   return tblMeta.getJournalName();
    }
    public String getTgtTableName() {
       return tblMeta.getTgtSchema() + "." + tblMeta.getTgtTable();
@@ -408,13 +525,13 @@ if(lastJournalSeqNum>0) {
       //ovLogger.log(label + "table metadata closed");
    }
    public void close() {
-      ovLogger.info("closing tgt. tblID: " + tableID );
+      ovLogger.info("closing tgt. tblID: " + tblMeta.getTableID() );
       try {
          tblTgt.close();
       } catch (SQLException e) {
          System.out.println(e.getMessage());
       }
-      ovLogger.info("closing src. tblID: " + tableID);
+      ovLogger.info("closing src. tblID: " + tblMeta.getTableID());
       try {
          tblSrc.close();
       } catch (SQLException e) {

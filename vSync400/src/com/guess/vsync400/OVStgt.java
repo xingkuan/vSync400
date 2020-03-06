@@ -337,6 +337,16 @@ long tmpLong;
       return refreshCnt;
    }
 
+   public int dropStaleRecordsOfRRNlist(String rrnList) throws SQLException {
+	  int delCnt=0;
+      String DeleteTargetTable  = " delete from "  + tblMeta.getTgtSchema() + "." + tblMeta.getTgtTable() 
+			   + " where "  + tblMeta.getPK() + " in (" + rrnList + ")";
+      
+      delCnt = tgtStmt.executeUpdate (DeleteTargetTable) ;
+      tgtConn.commit();
+      
+      return delCnt;
+   }
    public Long dropStaleRecords(String jobID,String srcTblAb7,int tableID) throws SQLException {  //2019.12.18: added the parameters purely for sending them to influxDB
       // deletes records to be replaced in target table
       boolean NeedsProcessing;

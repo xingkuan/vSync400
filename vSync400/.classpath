@@ -7,5 +7,9 @@
 	<classpathentry kind="lib" path="C:/Users/johnlee/git/vSync/libs/ojdbc6.jar"/>
 	<classpathentry kind="lib" path="C:/Users/johnlee/git/vSync/libs/vertica-jdbc-8.1.1-0.jar"/>
 	<classpathentry kind="lib" path="C:/Users/johnlee/git/vSync400/libs/jt400.jar"/>
+	<classpathentry kind="lib" path="C:/Users/johnlee/git/vSync400/libs/kafka-clients-2.1.1.jar"/>
+	<classpathentry kind="lib" path="C:/Users/johnlee/git/vSync400/libs/slf4j-api-1.7.25.jar"/>
+	<classpathentry kind="lib" path="C:/Users/johnlee/git/vSync400/libs/slf4j-log4j12-1.7.25.jar"/>
+	<classpathentry kind="lib" path="C:/Users/johnlee/git/vSync400/libs/log4j-1.2.17.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

@@ -14,6 +14,7 @@ class OVSaudit
    private static OVSrepo dbMeta = new OVSrepo();
    
    private static final Logger log4j = LogManager.getLogger();
+   private static String jobID="AudTbl";
    
    public static void main (String args[]) {   
       if (args.length != 1) { 
@@ -34,7 +35,7 @@ class OVSaudit
       }
       dbMeta.init(); 
       tProc.setDbMeta(dbMeta);
-      tProc.auditTbls(poolID);
+      tProc.auditTbls(poolID, jobID);
       
       return ;
    }

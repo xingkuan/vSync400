@@ -12,6 +12,7 @@ class OVSdeact
 {
    private static OVStableProcessor tProc = new OVStableProcessor();
    private static OVSrepo dbMeta = new OVSrepo();
+   private static String jobID="deact";
    
    public static int main (String args[]) {   
       int argLength=args.length;
@@ -28,7 +29,7 @@ class OVSdeact
          System.out.println("db initialized");
 
          tProc.setDbMeta(dbMeta);
-         tProc.deactivate(Integer.parseInt(args[0]), "deact");
+         tProc.deactivate(Integer.parseInt(args[0]), jobID);
          tProc.close();
       } catch (Exception e) {
     	  System.out.println(e); 

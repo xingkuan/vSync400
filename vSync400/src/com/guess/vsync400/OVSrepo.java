@@ -168,4 +168,52 @@ public boolean isNewTblID(int tblID) {
 	   
 	return rslt;
 }
+
+
+public List<String> getAS400JournalsByPoolID(int poolID) {
+	   List<String> jList = new ArrayList<String>();
+	   String strSQL;
+    OVScred repCred = dbCred[0];
+    
+    //let's assume DB2 tables with be between tableID 1000 and 3000
+	   if(poolID < 0)
+		   strSQL = "select distinct(source_db_id||'.'||source_log_table) from sync_table where table_id between 1000 and 3000";
+	   else
+	      strSQL = "select distinct(source_db_id||'.'||source_log_table) from sync_table where table_id between 1000 and 3000 and pool_id = " + poolID ;
+	      
+    // This shortterm solution is only for Oracle databases (as the source)
+	   try {
+        Class.forName("oracle.jdbc.OracleDriver"); 
+        repConn = DriverManager.getConnection(repCred.getURL(), repCred.getUser(), repCred.getPWD());
+        repConn.setAutoCommit(false);
+        repStmt = repConn.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_UPDATABLE);
+        rRset = repStmt.executeQuery(strSQL);
+        while(rRset.next()){
+            //Retrieve by column name
+            String jName  = rRset.getString(1);
+            jList.add(jName);
+         }
+     } catch(SQLException se){
+        ovLogger.error("OJDBC driver error has occured" + se);
+     }catch(Exception e){
+         //Handle errors for Class.forName
+     	ovLogger.error(e);
+      }finally {
+     	// make sure the resources are closed:
+     	 try{
+     		if(repStmt !=null)
+     			repStmt.close();
+     	 }catch(SQLException se2){
+     	 }
+          try{
+              if(repConn!=null)
+                 repConn.close();
+          }catch(SQLException se){
+          }
+      }
+	   
+	   return jList;
+}  
+
+
  }    
