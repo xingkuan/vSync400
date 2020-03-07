@@ -281,14 +281,10 @@ class OVStable {
    public boolean tblRefresh() throws SQLException {
    //public boolean tblRefresh() throws SQLException {
       boolean rtv=true;
-      int recordCnt;
-      int errorCnt;
-      int srcRC;
-      int tgtRC;
-      
+     
 	   
 	    int noRecordsCount=0, cntRRN=0;
-//	    int giveUp=10; 
+	    boolean firstItem=true; 
 	    String rrnList="";
 	    long lastJournalSeqNum=0l;
 		  boolean success=true;
@@ -297,8 +293,6 @@ class OVStable {
       final int giveUp = Integer.parseInt(conf.getConf("kafkaMaxEmptyPolls"));
       final int pollWaitMil = Integer.parseInt(conf.getConf("kafkaPollWaitMill"));
       
-      srcRC=0;
-      tgtRC=0;
 
       if (tblMeta.getCurrState() == 2 || tblMeta.getCurrState() == 5) {
       	  String srcLog = tblMeta.getLogTable();
@@ -326,9 +320,10 @@ class OVStable {
 		        
 		        for (ConsumerRecord<Long, String> record : records) {
 		            //System.out.printf("offset = %d, key = %s, value = %s%n", record.offset(), record.key(), record.value());
-		        	if(cntRRN==0)
+		        	if(firstItem) {
 		        		rrnList = record.value();
-		        	else
+		        		firstItem=false;
+		        	}else
 		        		rrnList = rrnList + "," + record.value();
 		        	
 		            lastJournalSeqNum=record.key();
@@ -340,9 +335,10 @@ class OVStable {
 		        //in case there are more in Kafka broker:
 		        rrnList="";
 		        noRecordsCount=0;
+		        firstItem=true;
 		  }
  		  
-		 //kafkaConsumer.close();   //to be called from OVSsync.
+		  consumerx.close();  
 
 		  java.sql.Timestamp ts = new java.sql.Timestamp(System.currentTimeMillis()); 
 		  //if no entries from Kafka, then simply mark this run:

@@ -35,22 +35,26 @@ class OVStableProcessor {//. extends Thread {
 	  
 	  List<Integer> tblIDs = dbMeta.getTblsByPoolID(poolID); 
 	  for (int tid: tblIDs){
-		  //syncTblByID(tid, poolID);
-		  syncTblByID(tid);
+		  //syncTblByID(tid);
+		  init(tid);
+		  procAll();
 	  }
+	  
+	  close();
    }
    
    //put toolID there, so Grafana dashboard can be serperated according to poolID 
    //private void syncTblByID(int tblID, int pID) {
-   private void syncTblByID(int tblID) {
-	  init(tblID);
-	  refresh();
-   }
+//   private void syncTblByID(int tblID) {
+//	  init(tblID);
+//	  //refresh();
+//	  procAll();
+//   }
 //JOHNLEE, 07/24, replace the run() {}? not a good abstraction; should be re-orged!
-   public void refresh() {
-	   procAll();
-	   close();
-   }
+//   private  void refresh() {
+//	   procAll();
+//	   close();
+//   }
    
  
    //private boolean init(int tid, String lbl) {
@@ -104,8 +108,8 @@ class OVStableProcessor {//. extends Thread {
 	  for (int tid: tblIDs){
 		  init(tid);
 		  ovTable.audit(jobID);
-		  close();
 	  }	      
+	  close();
    }
    
    public void deactivate(int tID, String jID) {
@@ -138,7 +142,7 @@ class OVStableProcessor {//. extends Thread {
    public void tblLoadSwap() {
       ovTable.tblLoadSwap();
    }
-   public void procAll() {
+   private void procAll() {
       int rt;
       int rc;
       boolean flg=true;

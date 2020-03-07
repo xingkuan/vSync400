@@ -149,7 +149,7 @@ public class DB2toKafka {
 				}
 			}
 			ovLogger.info("   last Journal Seq #: " + seq);
-			metrix.sendMX("JournalSeq,jobId="+jobID+",journal="+srcTbl+" value=" + seq + "\n");
+			metrix.sendMX("JournalSeq,jobId="+jobID+",journal="+jLib+"."+jName+" value=" + seq + "\n");
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

@@ -12,6 +12,7 @@ class OVSaudit
 {
    private static OVStableProcessor tProc = new OVStableProcessor();
    private static OVSrepo dbMeta = new OVSrepo();
+   private static OVSmeta tblMeta;
    
    private static final Logger log4j = LogManager.getLogger();
    private static String jobID="AudTbl";
@@ -33,8 +34,14 @@ class OVSaudit
     	  log4j.error("invalid poolID! ");
     	  return;
       }
+      
       dbMeta.init(); 
+      tblMeta = new OVSmeta();
+      tblMeta.setDbMeta(dbMeta);
+      
       tProc.setDbMeta(dbMeta);
+	  tProc.setOVSmeta(tblMeta);
+	  
       tProc.auditTbls(poolID, jobID);
       
       return ;
