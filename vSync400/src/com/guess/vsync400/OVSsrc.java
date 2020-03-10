@@ -332,7 +332,7 @@ class OVSsrc {
           ovLogger.error("initSrcLogQuery(): " + jLibName + "." + jName + " is not initialized.");
     	  rtv=false;
       }else {
-          ovLogger.error("initSrcLogQuery(): " + jLibName + "." + jName + " last Seq: " + jMeta400.getSeqLastRefresh());
+          ovLogger.info("initSrcLogQuery(): " + jLibName + "." + jName + " last Seq: " + jMeta400.getSeqLastRefresh());
     	  strLastSeq =  Long.toString(jMeta400.getSeqLastRefresh());
     	  strReceiver="*CURCHAIN";
       
