@@ -132,10 +132,7 @@ class OVSmetaJournal400 {
    }
    
    public void saveReplicateKafka() {
-	   int duration = (int)(int)((endMS - startMS)/1000);
-
-	   metrix.sendMX("repToKafka,jobId="+label+" value="+duration+"\n");
-
+      int duration = (int)(int)((endMS - startMS)/1000);
       try {                     
          rRset.updateTimestamp("TS_LAST_REF400",tsThisRefresh);
          rRset.updateLong("SEQ_LAST_REF",seqThisRef);
@@ -145,6 +142,8 @@ class OVSmetaJournal400 {
       } catch (SQLException e) {
          System.out.println(e.getMessage());
       }
+	   metrix.sendMX("duration,jobId="+label+" value="+duration+"\n");
+	   metrix.sendMX("Seq#,jobId="+label+" value="+seqThisRef+"\n");
    }
 
    public void saveAudit(int srcRC, int tgtRC) {
@@ -168,7 +167,7 @@ class OVSmetaJournal400 {
 		tsThisRefresh = thisRefreshHostTS;
 	}
    
-	public void setRefreshSeq(long thisRefreshSeq) {
+	public void setThisRefreshSeq(long thisRefreshSeq) {
 		if(thisRefreshSeq>0) {
 			seqThisRef=thisRefreshSeq;
 		}else {
@@ -176,6 +175,7 @@ class OVSmetaJournal400 {
 			ovLogger.info("...hmm, got a 0 for SEQ# for srcTbl " + srcLogTable + ". The last one: " + seqLastRef);
 		}
 	}
+	
    public int getPrcTimeout() {
       return prcTimeout;
    }

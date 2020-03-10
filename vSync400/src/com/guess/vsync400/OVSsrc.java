@@ -144,15 +144,22 @@ class OVSsrc {
 
       return rtv;
    }
-   public boolean initForKafka() {
-	      label=jMeta400.getLabel();
+   public boolean initForKafkaMeta() {
+	   boolean proceed=false;
+	   label=jMeta400.getLabel();
 	      
-		  jLibName = jMeta400.getJournalLib();
-		  jName = jMeta400.getJournalName();
-	      
-	      return linit400();
-	   }
-   private boolean linit400() {
+	   jLibName = jMeta400.getJournalLib();
+	   jName = jMeta400.getJournalName();
+
+	   setThisRefreshHostTS();
+	   setThisRefreshSeq();
+	   if( seqThisFresh > jMeta400.getSeqLastRefresh())
+		   proceed=true;
+	  //return linit400();
+	   
+	   return proceed;
+   }
+   public boolean linit400() {
 	      int attempts;
 	      //  initializes the connection
 	      
@@ -208,11 +215,7 @@ class OVSsrc {
 	         // all success, burn rest of attempts
 	         attempts=connAtmptLim;
 	      } catch(SQLException e) {
-	         //System.out.println(label + " tgt cannot connect to db");
-	         //System.out.println(label + e.getMessage());
-	//.         ovLogger.log(label + " src cannot connect to db - init failed ");
 	         ovLogger.error(label + " src cannot connect to db - init failed ");
-	//.         ovLogger.log(label + e.getMessage());
 	         ovLogger.error(label + e.getMessage());
 	         rtv=false;
 	         msWait(AtmptDelay);
@@ -222,13 +225,12 @@ class OVSsrc {
 
 	      return rtv;
 	   }
-   public void markThisRun(){
-	  //2020.02.24: 
-	  //   before doing anything, record the current Timestamp and Sequence_number of the Journal:
+/*   public void markThisRun(){
 	   setThisRefreshHostTS();
-	   setThisRefreshSeq();
+	   setThisRefreshSeq();  
    }
-   public boolean initSrcQueryOfRRNList(String rrns) {
+   */
+/*   public boolean initSrcQueryOfRRNList(String rrns) {
 	      boolean rtv=true;
 	      String sqlStmt = tblMeta.getSQLSelect() + " where rrn(a) in (" + rrns + ")";
 	      //String sqlStmt = "select * from johnlee2.testtbl2";
@@ -243,29 +245,19 @@ class OVSsrc {
 	      
 	      return rtv;
    }
-   //public boolean initSrcQuery(String whereClause){
-   public boolean initSrcQuery(boolean isInit){
-	   if(isInit) {
-	     markThisRun();   // otherwise, done in initSrcLogQuery
+   */
+   //public boolean initSrcQuery(boolean isInit){
+   public boolean initSrcQuery(String rrns){
+	   String whereClause;
+
+	   if(rrns.equals("")) {      //empty where clause is used only for initializing a table
+		   setThisRefreshHostTS();
+		   setThisRefreshSeq();  
+		   whereClause = "";
+	   }else{    //otherwise, will be a list of RRN like "1,2,3"
+		   whereClause = " where rrn(a) in (" + rrns + ")";
 	   }
 	   
-	   String whereClause;
-	   if(isInit) {
-		   whereClause = "";
-	   }else {
-		   whereClause = " where rrn(a) in (" 
-        		+ " select distinct(COUNT_OR_RRN) "
-        		+ " FROM table (Display_Journal('" + jLibName + "', '" + jName + "', "
-        		+ "   '', '*CURCHAIN', "
-        		+ "   cast(null as TIMESTAMP), "    //pass-in the start timestamp;
-        		+ "   cast(" + tblMeta.getSeqLastRefresh() + " as decimal(21,0)), "    //starting SEQ #
-        		+ "   'R', "   //JOURNAL CODE: 
-        		+ "   '',"    //JOURNAL entry: UP,DL,PT,PX,UR,DR,UB
-        + "   '" + tblMeta.getSrcSchema() + "', '" + tblMeta.getSrcTable() + "', '*QDDS', '',"  //Object library, Object name, Object type, Object member
-  		+ "   '', '', ''"   //User, Job, Program
-  		+ ") ) as x where SEQUENCE_NUMBER >=" + tblMeta.getSeqLastRefresh() + " and SEQUENCE_NUMBER <=" + seqThisFresh + ")";            
-	   }
-      // initializes the source recordset using the passed parameter whereClause as the where clause 
       boolean rtv=true;
       String sqlStmt = tblMeta.getSQLSelect() + " " + whereClause;
       //String sqlStmt = "select * from johnlee2.testtbl2";
@@ -281,6 +273,8 @@ class OVSsrc {
       
       return rtv;
    }
+/*   
+   //now, this is only used by DB2toKafka
    public boolean initSrcLogQuery() {
 	   markThisRun();
 	   
@@ -322,8 +316,10 @@ class OVSsrc {
       }
       return rtv;
    }
-   public boolean initSrcLogQuery400() {
-	   markThisRun();
+   */
+   public boolean initSrcLogQuery400() {  
+   //now, this is only used by DB2toKafka   
+	  linit400();  
 	   
       // initializes the source log query
       boolean rtv=true;
@@ -333,9 +329,10 @@ class OVSsrc {
 
 
       if (jMeta400.getSeqLastRefresh() == 0) {
-          ovLogger.error("initSrcLogQuery(): " + jLibName + "." + jName + "is not initialized.");
+          ovLogger.error("initSrcLogQuery(): " + jLibName + "." + jName + " is not initialized.");
     	  rtv=false;
       }else {
+          ovLogger.error("initSrcLogQuery(): " + jLibName + "." + jName + " last Seq: " + jMeta400.getSeqLastRefresh());
     	  strLastSeq =  Long.toString(jMeta400.getSeqLastRefresh());
     	  strReceiver="*CURCHAIN";
       
@@ -352,7 +349,7 @@ class OVSsrc {
 	    	              		+ "   '',"    //JOURNAL entry: UP,DL,PT,PX,UR,DR,UB
 	    	              		+ "   '', '', '*QDDS', '',"  //Object library, Object name, Object type, Object member
 	    	              		+ "   '', '', ''"   //User, Job, Program
-	    	              		+ ") ) as x where SEQUENCE_NUMBER >=" + strLastSeq + " and SEQUENCE_NUMBER <=" + seqThisFresh + " order by 2 asc"   // something weird with DB2 function: the starting SEQ number seems not takining effect
+	    	              		+ ") ) as x where SEQUENCE_NUMBER > " + strLastSeq + " and SEQUENCE_NUMBER <=" + seqThisFresh + " order by 2 asc"   // something weird with DB2 function: the starting SEQ number seems not takining effect
 	    	              		;
 	         sRset=srcStmt.executeQuery(StrSQLRRN);
 	         ovLogger.info("   opened src jrnl recordset: " + label);
@@ -430,7 +427,11 @@ class OVSsrc {
    public java.sql.Timestamp getThisRefreshHostTS(){
 	   return tsThisRefesh;
    }
+   
    private void setThisRefreshHostTS(){
+	   //no more need to get it from the host
+	   Timestamp ts = new Timestamp(System.currentTimeMillis());
+	   /*
 	      int rtv;
 	      ResultSet lrRset;
 	      java.sql.Timestamp hostTS = null;
@@ -451,6 +452,12 @@ class OVSsrc {
 	      }
 
 	      tsThisRefesh = hostTS;
+*/
+	   tsThisRefesh = ts;
+	   if(jMeta400!=null)   //that means it is from DB2toKafka
+		   jMeta400.setRefreshTS(ts);
+	   if(tblMeta!=null)   //when called from OVSsysnc, OVSinit
+		   tblMeta.setRefreshTS(ts);   
    }
    public long getThisRefreshSeq(){
 	   return seqThisFresh;
@@ -478,6 +485,10 @@ class OVSsrc {
 	            //I guess it could be 0 when DB2 just switched log file.
 	    	 	if (lrRset.next()) {
 	    	 		seqThisFresh = lrRset.getLong(1);  
+	    	 		if(jMeta400!=null)    //only if called from DB2toKafaka
+	    	 			jMeta400.setThisRefreshSeq(seqThisFresh);   
+	    	 		if(tblMeta!=null)     //from init, sync
+	    	 			tblMeta.setRefreshSeq(seqThisFresh);   
 	    	 	}
 	    	 	lrRset.close();
 

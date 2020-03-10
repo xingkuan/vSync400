@@ -116,8 +116,6 @@ public class DB2toKafka {
 	   
 	    List<String> tblList;
 	    
-		//JDBC result of "Display_jounral(), and iterate through it:
-		OVSsrc tblSrc = new OVSsrc();
 		//The DB2 journal
 		OVSmetaJournal400 tblMeta;   
 	    tblMeta = new OVSmetaJournal400();
@@ -125,46 +123,50 @@ public class DB2toKafka {
 	    tblMeta.initForKafka(dbID, jLib, jName);
 	    tblMeta.markStartTime();
 	    
+		//JDBC result of "Display_jounral(), and iterate through it:
+		OVSsrc tblSrc = new OVSsrc();
 	    tblSrc.setMeta400(tblMeta);
-		tblSrc.initForKafka();
-
-	    tblSrc.initSrcLogQuery400();
-	    tblList = dbMeta.getDB2TablesOfJournal(dbID, jLib+"."+jName);
-        
-    	//the message to be formated as: SEQ#:RRN:TS
-
-        int rrn=0;
-        long seq=0l;
-        String srcTbl="";
-        ResultSet srcRset = tblSrc.getSrcResultSet();
-        try {
-			while (srcRset.next()) {
-				rrn=srcRset.getInt("RRN");
-				seq=srcRset.getLong("SEQNBR");
-				srcTbl=srcRset.getString("SRCTBL");
-				// ignore those for unregister tables:
-				if (tblList.contains(srcTbl)) {
-					aMsg = new ProducerRecord<Long, String>(srcTbl, seq, String.valueOf(rrn));
-					RecordMetadata metadata = producer.send(aMsg).get();
+		tblSrc.linit400();   //initialize src DB conn
+		boolean hasWork = tblSrc.initForKafkaMeta();
+		if(hasWork) {
+		    tblList = dbMeta.getDB2TablesOfJournal(dbID, jLib+"."+jName);
+	        
+	    	//the message to be formated as: SEQ#:RRN:TS
+	
+	        int rrn=0;
+	        long seq=0l;
+	        String srcTbl="";
+	        tblSrc.initSrcLogQuery400();
+	        ResultSet srcRset = tblSrc.getSrcResultSet();   //the journal lib and member names are in thetblMeta.
+	        try {
+				while (srcRset.next()) {
+					rrn=srcRset.getInt("RRN");
+					seq=srcRset.getLong("SEQNBR");
+					srcTbl=srcRset.getString("SRCTBL");
+					// ignore those for unregister tables:
+					if (tblList.contains(srcTbl)) {
+						aMsg = new ProducerRecord<Long, String>(srcTbl, seq, String.valueOf(rrn));
+						RecordMetadata metadata = producer.send(aMsg).get();
+					}
 				}
+				ovLogger.info("   last Journal Seq #: " + seq);
+				metrix.sendMX("JournalSeq,jobId="+jobID+",journal="+jLib+"."+jName+" value=" + seq + "\n");
+			} catch (SQLException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (ExecutionException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
 			}
-			ovLogger.info("   last Journal Seq #: " + seq);
-			metrix.sendMX("JournalSeq,jobId="+jobID+",journal="+jLib+"."+jName+" value=" + seq + "\n");
-		} catch (SQLException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (ExecutionException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
 		}
-	    
         tblMeta.markEndTime();
-        Timestamp ts = new Timestamp(System.currentTimeMillis());
-        tblMeta.setRefreshTS(ts);
-        tblMeta.setRefreshSeq(seq);
+        //Timestamp ts = new Timestamp(System.currentTimeMillis());
+        //tblMeta.setRefreshTS(ts);
+        //tblMeta.setRefreshSeq(seq);
 		tblMeta.saveReplicateKafka();
+
 	}
 }

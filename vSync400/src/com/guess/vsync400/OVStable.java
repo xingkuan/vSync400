@@ -77,67 +77,73 @@ class OVStable {
       int recordCnt;
       int errorCnt;
       
-      if ( (tblMeta.getCurrState() == 0)       ||    // setup, but not initialized 
-    	   ( (tblMeta.getCurrState() == 2            //or (initialized 
-    	      || tblMeta.getCurrState() == 5 ) &&    //     or refreshed) 
-    	      tblMeta.getTgtUseAlt()                 //   and use swap ? 
-    	   ) 
-      ){
-         tblMeta.setCurrentState(1);   // set current state to initializing
-         tblMeta.markStartTime();
-      
-         //Timestamp ts = new Timestamp(System.currentTimeMillis());
-         try {
-            tblSrc.initSrcQuery(true);
-            ovLogger.info("src query initialized. tblID: " + tblMeta.getTableID() +". Job " + jobID );
-
-            db2KafkaMeta.setRefreshTS(tblSrc.getThisRefreshHostTS());
-            db2KafkaMeta.setRefreshSeq(tblSrc.getThisRefreshSeq());
-            tblMeta.setRefreshTS(tblSrc.getThisRefreshHostTS());
-            tblMeta.setRefreshSeq(tblSrc.getThisRefreshSeq());
-
-            tblTgt.setSrcRset(tblSrc.getSrcResultSet());
-            recordCnt=tblTgt.initLoadType1();
-
-            tblMeta.setRefreshCnt(recordCnt);
-            errorCnt=tblTgt.getErrCnt();
-            if(errorCnt>0)
-            	metrix.sendMX("errCnt,jobId="+jobID+",tblID="+srcTblAb7+"~"+tblMeta.getTableID()+" value=" + errorCnt + "\n");
-            //ovLogger.info("JobID: " + jobID + ", tblID: " + tableID  + " stats saved");
-
-            tblTgt.commit();
-            tblSrc.commit();
-            ovLogger.info("Refreshed tblID: " + tblMeta.getTableID() + ". JobID: " + jobID);
-            
-            tblMeta.markEndTime();
-            //tblMeta.saveInitStats(jobID, hostTS); 
-            tblMeta.saveInitStats(jobID); 
-            db2KafkaMeta.saveReplicateKafka();
-            
-            if (recordCnt < 0) {
-               tblMeta.setCurrentState(7);   //broken - suspended
-               rtv=false;
-            } else {
-               tblMeta.setCurrentState(2);   //initialized
-            }
-         } catch (SQLException e) {
-            rtv=false;
-            ovLogger.error("exception in tblInitType1() for (tblID: " + tblMeta.getTableID() +"): "  + e.getMessage());
-         } finally {
-		      if (!rtv) {
-                 try {
-                    tblTgt.rollback();
-                    tblSrc.rollback();
-// .			        tblSrc.setTriggerOff(); 
-                   tblMeta.setCurrentState(0);
-                 } catch(SQLException e) {
-                    ovLogger.error("JobID: " + jobID + ", tblID: " + tblMeta.getTableID() + e.getMessage());
-                 }
-			  }
-         }
-      } else { 
-         ovLogger.error("Cannot initialize. tblID " + tblMeta.getTableID() +" not in correct state.");
-         rtv=false;
+      //verify Journal_sequence is right:
+      long curLogSeq = tblSrc.getThisRefreshSeq();
+      if (db2KafkaMeta.getSeqLastRefresh() == 0 ) {
+    	  ovLogger.info("Before initializing a table, please make sure the Journal has been started replicating to Kafka!!!" );
+    	  rtv = false;
+      }else {
+	      if ( (tblMeta.getCurrState() == 0)       ||    // setup, but not initialized 
+	    	   ( (tblMeta.getCurrState() == 2            //or (initialized 
+	    	      || tblMeta.getCurrState() == 5 ) &&    //     or refreshed) 
+	    	      tblMeta.getTgtUseAlt()                 //   and use swap ? 
+	    	   ) 
+	      ){
+	         tblMeta.setCurrentState(1);   // set current state to initializing
+	         tblMeta.markStartTime();
+	      
+	         //Timestamp ts = new Timestamp(System.currentTimeMillis());
+	         try {
+	            tblSrc.initSrcQuery("");
+	            ovLogger.info("src query initialized. tblID: " + tblMeta.getTableID() +". Job " + jobID );
+	
+	            //db2KafkaMeta.setRefreshTS(tblSrc.getThisRefreshHostTS());  This is Journal level info. Don't do it here!
+	            //db2KafkaMeta.setRefreshSeq(tblSrc.getThisRefreshSeq());    This is Journal level info. Don't do it here!
+	            tblMeta.setRefreshTS(tblSrc.getThisRefreshHostTS());   //and it is info only
+	            tblMeta.setRefreshSeq(curLogSeq);     //    it is info only. 
+	
+	            tblTgt.setSrcRset(tblSrc.getSrcResultSet());
+	            recordCnt=tblTgt.initLoadType1();
+	
+	            tblMeta.setRefreshCnt(recordCnt);
+	            errorCnt=tblTgt.getErrCnt();
+	            if(errorCnt>0)
+	            	metrix.sendMX("errCnt,jobId="+jobID+",tblID="+srcTblAb7+"~"+tblMeta.getTableID()+" value=" + errorCnt + "\n");
+	            //ovLogger.info("JobID: " + jobID + ", tblID: " + tableID  + " stats saved");
+	
+	            tblTgt.commit();
+	            tblSrc.commit();
+	            ovLogger.info("Refreshed tblID: " + tblMeta.getTableID() + ". JobID: " + jobID);
+	            
+	            tblMeta.markEndTime();
+	            tblMeta.saveInitStats(jobID); 
+	            //db2KafkaMeta.saveReplicateKafka();    Initialize table has nothing to do with Journal level info. Don't do it here.
+	            
+	            if (recordCnt < 0) {
+	               tblMeta.setCurrentState(7);   //broken - suspended
+	               rtv=false;
+	            } else {
+	               tblMeta.setCurrentState(2);   //initialized
+	            }
+	         } catch (SQLException e) {
+	            rtv=false;
+	            ovLogger.error("exception in tblInitType1() for (tblID: " + tblMeta.getTableID() +"): "  + e.getMessage());
+	         } finally {
+			      if (!rtv) {
+	                 try {
+	                    tblTgt.rollback();
+	                    tblSrc.rollback();
+	// .			        tblSrc.setTriggerOff(); 
+	                   tblMeta.setCurrentState(0);
+	                 } catch(SQLException e) {
+	                    ovLogger.error("JobID: " + jobID + ", tblID: " + tblMeta.getTableID() + e.getMessage());
+	                 }
+				  }
+	         }
+	      } else { 
+	         ovLogger.error("Cannot initialize. tblID " + tblMeta.getTableID() +" not in correct state.");
+	         rtv=false;
+	      }
       }
       return rtv;
   }
@@ -287,7 +293,7 @@ class OVStable {
 	    boolean firstItem=true; 
 	    String rrnList="";
 	    long lastJournalSeqNum=0l;
-		  boolean success=true;
+		boolean success=true;
 	    
       
       final int giveUp = Integer.parseInt(conf.getConf("kafkaMaxEmptyPolls"));
@@ -297,8 +303,8 @@ class OVStable {
       if (tblMeta.getCurrState() == 2 || tblMeta.getCurrState() == 5) {
       	  String srcLog = tblMeta.getLogTable();
       	  String[] res = srcLog.split("[.]", 0);
-      	  String jLibName = res[0];
-      	  String jName = res[1];
+      	  //String jLibName = res[0];
+      	  //String jName = res[1];
 
 		  //String strTS = new SimpleDateFormat("yyyy-MM-dd-HH.mm.ss.SSSSSS").format(tblMeta.getLastRefresh());
 		  tblMeta.markStartTime();
@@ -314,28 +320,33 @@ class OVStable {
 		        ConsumerRecords<Long, String> records =	consumerx.poll(0);
 		        if (records.count()==0) {
 		            noRecordsCount++;
-		            if (noRecordsCount > giveUp) break;
+		            if (noRecordsCount > giveUp) break;    //no more records. exit 
 		            else continue;
 		        }
 		        
 		        for (ConsumerRecord<Long, String> record : records) {
 		            //System.out.printf("offset = %d, key = %s, value = %s%n", record.offset(), record.key(), record.value());
-		        	if(firstItem) {
+		            lastJournalSeqNum=record.key();
+		            
+			        //if( lastJournalSeqNum == db2KafkaMeta.getSeqLastRefresh()) {  //stop by the SEQ number indicated in sync_journal400 table:
+			    	//   break;    //break from the for loop 
+			        //}       ///let's stop where ever it is. really, it does not matter! 
+
+			        if(firstItem) {
 		        		rrnList = record.value();
 		        		firstItem=false;
 		        	}else
 		        		rrnList = rrnList + "," + record.value();
 		        	
-		            lastJournalSeqNum=record.key();
-		            cntRRN++;
+		        	cntRRN++;
 		        }
 		        
-		       success = replicateRRNList(rrnList);
-		       if (!success) break;
-		        //in case there are more in Kafka broker:
-		        rrnList="";
-		        noRecordsCount=0;
-		        firstItem=true;
+	        	success = replicateRRNList(rrnList);
+	        	if (!success) break;
+	        	//in case there are more in Kafka broker, start the next cycle:
+	        	rrnList="";
+	        	noRecordsCount=0;
+	        	firstItem=true;
 		  }
  		  
 		  consumerx.close();  
@@ -362,19 +373,18 @@ class OVStable {
 	       if(lastJournalSeqNum>0)
 	    	   metrix.sendMX("JournalSeq,jobId="+jobID+",tblID="+srcTblAb7+"~"+tblMeta.getTableID()+" value=" + lastJournalSeqNum + "\n");
 
-	     if(!success) {
+
 		 	   ovLogger.info("tblID: " + tblMeta.getTableID() + ", " + tblMeta.getTableID() + " - " + tblMeta.getSrcDbDesc() + " commited" );
 
-		       if (!success) {
-		           tblMeta.setCurrentState(7);   //broken - suspended
-		           //System.out.println(label + "refresh not succesfull");
-		           ovLogger.info("JobID: " + jobID + ", tblID: " + tblMeta.getTableID() + "refresh not succesfull");
-		        } else {
-		           tblMeta.setCurrentState(5);   //initialized
-		           //System.out.println(label + " <<<<<<<<<<<<  refresh successfull");
-		           ovLogger.info("JobID: " + jobID + ", tblID: " + tblMeta.getTableID() + " <<<<<  refresh successfull");
-		        }
-	     }
+	       if (!success) {
+	           tblMeta.setCurrentState(7);   //broken - suspended
+	           //System.out.println(label + "refresh not succesfull");
+	           ovLogger.info("JobID: " + jobID + ", tblID: " + tblMeta.getTableID() + "refresh not succesfull");
+	        } else {
+	           tblMeta.setCurrentState(5);   //initialized
+	           //System.out.println(label + " <<<<<<<<<<<<  refresh successfull");
+	           ovLogger.info("JobID: " + jobID + ", tblID: " + tblMeta.getTableID() + " <<<<<  refresh successfull");
+	        }
 
      } else { 
          ovLogger.error("JobID: " + jobID + ", tblID: " + tblMeta.getTableID()  + " No refresh for table state");
@@ -394,7 +404,8 @@ class OVStable {
 		   ovLogger.info(jobID +  " deleted - " + rowCnt );
 		   totalDelCnt = totalDelCnt + rowCnt;
 		   
-	       tblSrc.initSrcQueryOfRRNList(rrns);
+	       //tblSrc.initSrcQueryOfRRNList(rrns);
+	       tblSrc.initSrcQuery(rrns);
 	       ovLogger.info("Source query initialized. tblID: " + tblMeta.getTableID() + " - " + tblMeta.getSrcDbDesc() );
 	       tblTgt.setSrcRset(tblSrc.getSrcResultSet());
 	       rowCnt=tblTgt.initLoadType1();
