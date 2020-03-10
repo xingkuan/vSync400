@@ -42,11 +42,18 @@ class OVStable {
    private static final OVSmetrix metrix = OVSmetrix.getInstance();
    private static final Logger ovLogger = LogManager.getLogger();
 
+   private int totalDelCnt=0, totalInsCnt=0, totalErrCnt=0;
+   
+   private int giveUp;
+   private int kafkaMaxPollRecords;
+   private int pollWaitMil;
+   
 	public boolean init(String jID) {
       boolean rtv=true;
  
       jobID = jID;
  
+      totalDelCnt=0; totalInsCnt=0; totalErrCnt=0;
 /*20200303      
       tblMeta = new OVSmeta();
       tblMeta.setDbMeta(dbMeta);
@@ -223,10 +230,11 @@ class OVStable {
    private KafkaConsumer<Long, String> createKafkaConsumer(String topic){
 		Properties propsx = new Properties();
 		propsx.put("bootstrap.servers", "usir1xrvkfk01:9092,usir1xrvkfk02:9092");
-	    propsx.put("group.id", jobID);
+	    propsx.put("group.id", jobID+""+tblMeta.getTableID());
 	    propsx.put("enable.auto.commit", "true");
 	    propsx.put("auto.commit.interval.ms", "1000");
 	    propsx.put("auto.offset.reset", "earliest");
+	    propsx.put("max.poll.records", kafkaMaxPollRecords);
 	    propsx.put("session.timeout.ms", "30000");
 	    propsx.put("key.deserializer", "org.apache.kafka.common.serialization.LongDeserializer");
 	    propsx.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
@@ -296,8 +304,9 @@ class OVStable {
 		boolean success=true;
 	    
       
-      final int giveUp = Integer.parseInt(conf.getConf("kafkaMaxEmptyPolls"));
-      final int pollWaitMil = Integer.parseInt(conf.getConf("kafkaPollWaitMill"));
+      giveUp = Integer.parseInt(conf.getConf("kafkaMaxEmptyPolls"));
+      kafkaMaxPollRecords = Integer.parseInt(conf.getConf("kafkaMaxPollRecords"));
+      pollWaitMil = Integer.parseInt(conf.getConf("kafkaPollWaitMill"));
       
 
       if (tblMeta.getCurrState() == 2 || tblMeta.getCurrState() == 5) {
@@ -367,9 +376,11 @@ class OVStable {
 	        tblMeta.setRefreshCnt(cntRRN);
 	        tblMeta.setRefreshTS(ts);
 	        tblMeta.setRefreshSeq(lastJournalSeqNum);
+ 	       metrix.sendMX("delCnt,jobId="+jobID+",tblID="+srcTblAb7+"~"+tblMeta.getTableID()+" value=" + totalDelCnt + "\n");
+ 	       metrix.sendMX("insCnt,jobId="+jobID+",tblID="+srcTblAb7+"~"+tblMeta.getTableID()+" value=" + totalInsCnt + "\n");
+ 	       metrix.sendMX("errCnt,jobId="+jobID+",tblID="+srcTblAb7+"~"+tblMeta.getTableID()+" value=" + totalErrCnt + "\n");
 	        tblMeta.saveRefreshStats(jobID);
 		  }
-	       metrix.sendMX("errCnt,jobId="+jobID+",tblID="+srcTblAb7+"~"+tblMeta.getTableID()+" value=" + totalErrCnt + "\n");
 	       if(lastJournalSeqNum>0)
 	    	   metrix.sendMX("JournalSeq,jobId="+jobID+",tblID="+srcTblAb7+"~"+tblMeta.getTableID()+" value=" + lastJournalSeqNum + "\n");
 
@@ -394,7 +405,6 @@ class OVStable {
       return rtv;
    }
 
-   int totalDelCnt, totalInsCnt, totalErrCnt;
    private boolean replicateRRNList(String rrns) {
 	   boolean success=true;
 	   
