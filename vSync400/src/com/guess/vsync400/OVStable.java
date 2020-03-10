@@ -8,6 +8,7 @@ import java.sql.*;
 
 import org.apache.logging.log4j.Logger;
 import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -228,12 +229,15 @@ class OVStable {
    }
    
    private KafkaConsumer<Long, String> createKafkaConsumer(String topic){
+	   String consumerGrp = jobID+tblMeta.getTableID();
 		Properties propsx = new Properties();
 		propsx.put("bootstrap.servers", "usir1xrvkfk01:9092,usir1xrvkfk02:9092");
-	    propsx.put("group.id", jobID+""+tblMeta.getTableID());
+	    propsx.put("group.id", consumerGrp);
+	    //propsx.put(ConsumerConfig.GROUP_ID_CONFIG, jobID);
+	    propsx.put("client.id", jobID);
 	    propsx.put("enable.auto.commit", "true");
 	    propsx.put("auto.commit.interval.ms", "1000");
-	    propsx.put("auto.offset.reset", "earliest");
+	    propsx.put("auto.offset.reset", "earliest");    //if we do this, we better reduce msg retention to just one day.
 	    propsx.put("max.poll.records", kafkaMaxPollRecords);
 	    propsx.put("session.timeout.ms", "30000");
 	    propsx.put("key.deserializer", "org.apache.kafka.common.serialization.LongDeserializer");
@@ -325,8 +329,8 @@ class OVStable {
 
 		  while (true) {     
 				//blocking call:
-		        //ConsumerRecords<Long, String> records =	consumerx.poll(Duration.ofMillis(pollWaitMil));
-		        ConsumerRecords<Long, String> records =	consumerx.poll(0);
+		        ConsumerRecords<Long, String> records =	consumerx.poll(Duration.ofMillis(pollWaitMil));
+		        //ConsumerRecords<Long, String> records =	consumerx.poll(0);
 		        if (records.count()==0) {
 		            noRecordsCount++;
 		            if (noRecordsCount > giveUp) break;    //no more records. exit 
@@ -372,6 +376,11 @@ class OVStable {
 		   	tblMeta.setRefreshTS(ts); 
 		   	tblMeta.setRefreshSeq(0);   //0 means keep the original value.
 		   	tblMeta.saveRefreshStats(jobID);
+		   	
+	 	       metrix.sendMX("delCnt,jobId="+jobID+",tblID="+srcTblAb7+"~"+tblMeta.getTableID()+" value=0\n");
+	 	       metrix.sendMX("insCnt,jobId="+jobID+",tblID="+srcTblAb7+"~"+tblMeta.getTableID()+" value=0\n");
+	 	       metrix.sendMX("errCnt,jobId="+jobID+",tblID="+srcTblAb7+"~"+tblMeta.getTableID()+" value=0\n");
+
 		  }else{
 	        tblMeta.setRefreshCnt(cntRRN);
 	        tblMeta.setRefreshTS(ts);
@@ -380,12 +389,16 @@ class OVStable {
  	       metrix.sendMX("insCnt,jobId="+jobID+",tblID="+srcTblAb7+"~"+tblMeta.getTableID()+" value=" + totalInsCnt + "\n");
  	       metrix.sendMX("errCnt,jobId="+jobID+",tblID="+srcTblAb7+"~"+tblMeta.getTableID()+" value=" + totalErrCnt + "\n");
 	        tblMeta.saveRefreshStats(jobID);
+	        
+	    	ovLogger.info("Refreshed tblID: " + tblMeta.getTableID() + ", Del Cnt: " + totalDelCnt);
+	    	ovLogger.info("Refreshed tblID: " + tblMeta.getTableID() + ", Ins Cnt: " + totalInsCnt);
+	    	ovLogger.info("Refreshed tblID: " + tblMeta.getTableID() + ", Err Cnt: " + totalErrCnt);
+
 		  }
 	       if(lastJournalSeqNum>0)
 	    	   metrix.sendMX("JournalSeq,jobId="+jobID+",tblID="+srcTblAb7+"~"+tblMeta.getTableID()+" value=" + lastJournalSeqNum + "\n");
 
-
-		 	   ovLogger.info("tblID: " + tblMeta.getTableID() + ", " + tblMeta.getTableID() + " - " + tblMeta.getSrcDbDesc() + " commited" );
+		 	   ovLogger.info("tblID: " + tblMeta.getTableID() + ", "  + " - " + tblMeta.getSrcDbDesc() + " commited" );
 
 	       if (!success) {
 	           tblMeta.setCurrentState(7);   //broken - suspended
@@ -411,15 +424,15 @@ class OVStable {
 	   int rowCnt;
 	   try {
 			rowCnt = tblTgt.dropStaleRecordsOfRRNlist(rrns);
-		   ovLogger.info(jobID +  " deleted - " + rowCnt );
+	//	   ovLogger.info(jobID +  " deleted - " + rowCnt );
 		   totalDelCnt = totalDelCnt + rowCnt;
 		   
 	       //tblSrc.initSrcQueryOfRRNList(rrns);
 	       tblSrc.initSrcQuery(rrns);
-	       ovLogger.info("Source query initialized. tblID: " + tblMeta.getTableID() + " - " + tblMeta.getSrcDbDesc() );
+	//       ovLogger.info("Source query initialized. tblID: " + tblMeta.getTableID() + " - " + tblMeta.getSrcDbDesc() );
 	       tblTgt.setSrcRset(tblSrc.getSrcResultSet());
 	       rowCnt=tblTgt.initLoadType1();
-	       ovLogger.info("Refreshed tblID: " + tblMeta.getTableID() + ", record Count: " + rowCnt);
+	//      ovLogger.info("Refreshed tblID: " + tblMeta.getTableID() + ", record Count: " + rowCnt);
 	       if(rowCnt<0)
 	    	   success=false;
 	       totalInsCnt = totalInsCnt + rowCnt;
@@ -427,6 +440,7 @@ class OVStable {
 	       rowCnt=tblTgt.getErrCnt();
 	       totalErrCnt = totalErrCnt + rowCnt;
 	
+           tblTgt.commit();
 	       tblSrc.commit();
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
@@ -445,6 +459,7 @@ class OVStable {
 // .            tblSrc.truncateLog();
 // .            tblSrc.setTriggerOff();
             tblSrc.commit();
+            tblTgt.commit();
             //System.out.println(label + "Table stopped");
             ovLogger.info("Log for " + tblMeta.getTableID() + " stopped");
          } catch (SQLException e) {

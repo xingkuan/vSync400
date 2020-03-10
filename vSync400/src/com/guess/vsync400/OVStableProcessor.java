@@ -31,7 +31,7 @@ class OVStableProcessor {//. extends Thread {
 
 // 07/18: go through eatch table in the pool, and sync them accordingly.
    public void syncTblsByPoolID(int poolID, String jID) {
-	  jobID=jID+"_"+poolID;
+	  jobID=jID+poolID;
 	  
 	  List<Integer> tblIDs = dbMeta.getTblsByPoolID(poolID); 
 	  for (int tid: tblIDs){
@@ -43,25 +43,9 @@ class OVStableProcessor {//. extends Thread {
 	  close();
    }
    
-   //put toolID there, so Grafana dashboard can be serperated according to poolID 
-   //private void syncTblByID(int tblID, int pID) {
-//   private void syncTblByID(int tblID) {
-//	  init(tblID);
-//	  //refresh();
-//	  procAll();
-//   }
-//JOHNLEE, 07/24, replace the run() {}? not a good abstraction; should be re-orged!
-//   private  void refresh() {
-//	   procAll();
-//	   close();
-//   }
-   
- 
    //private boolean init(int tid, String lbl) {
    private boolean init(int tid) {
-      // initializes table tblID.  lbl is simply a label to make it easier to filter logs and output based on the lbl content
       boolean rtv;
-      //jobID = lbl;
       tblID = tid;  
       
       ovLogger.info("Initializing tblID: " + tblID + ". jobID " + jobID + ".");
