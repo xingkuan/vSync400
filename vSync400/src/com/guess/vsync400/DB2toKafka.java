@@ -45,14 +45,14 @@ public class DB2toKafka {
            return ;
         } 
        
-        
         DB2toKafka replicateFromDB2toKafka = new DB2toKafka();
 
         replicateFromDB2toKafka.setPoolId(Integer.parseInt(args[0]));
         replicateFromDB2toKafka.setupKafka();
         replicateFromDB2toKafka.replicate();
         replicateFromDB2toKafka.close();
-
+        
+        //replicateFromDB2toKafka.test();
         return ;
      }
     
@@ -61,13 +61,17 @@ public class DB2toKafka {
     }
 	private void setupKafka(){
         String kafkaURL = conf.getConf("kafkaURL");
-        
+	    String strVal = conf.getConf("kafkaMaxBlockMS");
+		int kafkaMaxBlockMS = Integer.parseInt(strVal);
+
+
 	    props.put("bootstrap.servers", kafkaURL);
 	    props.put("acks", "all");
 	    props.put("retries", 0);
 	    props.put("batch.size", 16384);
 	    props.put("linger.ms", 1);
 	    props.put("buffer.memory", 33554432);
+	    props.put("max.block.ms", kafkaMaxBlockMS );     //default 60000 ms
 	    //props.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
 	    props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, LongSerializer.class.getName());
 	    //props.put("value.serializer", "org.apache.kafka.common.serialization.ByteArraySerializer");
@@ -87,7 +91,7 @@ public class DB2toKafka {
 		int srcDBid;
 		String jLib;
 		String jFile;
-
+		boolean goodRun=true;
         dbMeta.init();
 		
 		List<String> journals = dbMeta.getAS400JournalsByPoolID(poolID);
@@ -100,7 +104,9 @@ public class DB2toKafka {
 				jFile=tokens[2];
 	
 				ovLogger.info(" replicating: " + jName);
-				replicate(srcDBid, jLib, jFile);
+				goodRun=replicate(srcDBid, jLib, jFile);
+				if(!goodRun)
+					break;   //Something is wrong with the infrastructure; no need to continue.
 				ovLogger.info(" finished: " + jName);
 
 			 }else {
@@ -110,7 +116,9 @@ public class DB2toKafka {
 	}
 
 	
-	private void replicate(int dbID, String jLib, String jName){
+	private boolean replicate(int dbID, String jLib, String jName){
+		boolean success=true;
+		
 	    ProducerRecord<Long, String> aMsg;
 	    //ProducerRecord<String, String> aMsg;
 	   
@@ -152,21 +160,60 @@ public class DB2toKafka {
 				ovLogger.info("   last Journal Seq #: " + seq);
 				metrix.sendMX("JournalSeq,jobId="+jobID+",journal="+jLib+"."+jName+" value=" + seq + "\n");
 			} catch (SQLException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+				ovLogger.error("   failed to retrieve from DB2: " + e);
+				success=false;
 			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+				ovLogger.error("   failed to write to kafka: " + e);
+				success=false;
 			} catch (ExecutionException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+				ovLogger.error("   failed to write to kafka: " + e);
+				success=false;
 			}
 		}
         tblMeta.markEndTime();
         //Timestamp ts = new Timestamp(System.currentTimeMillis());
         //tblMeta.setRefreshTS(ts);
         //tblMeta.setRefreshSeq(seq);
-		tblMeta.saveReplicateKafka();
+        if(success)
+        	tblMeta.saveReplicateKafka();
 
+		return success;
+	}
+	
+	private void test() {
+		Properties propx = new Properties();
+	    KafkaProducer<Long, String> producerx;
+
+	    String strVal = conf.getConf("kafkaMaxBlockMS");
+		int kafkaMaxBlockMS = Integer.parseInt(strVal);
+		//String kafkaURL = conf.getConf("kafkaURL");
+		String kafkaURL="usir1xrvkfk04:9092";
+        
+	    propx.put("bootstrap.servers", kafkaURL);
+	    propx.put("acks", "all");
+	    propx.put("retries", 0);
+	    propx.put("batch.size", 16384);
+	    propx.put("linger.ms", 1);
+	    propx.put("buffer.memory", 33554432);
+	    propx.put("max.block.ms", kafkaMaxBlockMS );     //default 60000 ms
+	    //props.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
+	    propx.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, LongSerializer.class.getName());
+	    //props.put("value.serializer", "org.apache.kafka.common.serialization.ByteArraySerializer");
+	    propx.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+	    propx.put(ProducerConfig.CLIENT_ID_CONFIG, "vSync400_"+poolID);
+
+	    producerx = new KafkaProducer<Long, String>(propx);
+
+		ProducerRecord<Long, String> aMsgx;
+		aMsgx = new ProducerRecord<Long, String>("TEST", "1");
+		try {
+			RecordMetadata metadata = producerx.send(aMsgx).get();
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (ExecutionException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 }
