@@ -34,6 +34,10 @@ public class RegisterTbl400 {
    static FileWriter verticaDDL ;
    static FileWriter repoInsTbl ;
    static FileWriter repoInsCols;
+   
+   static FileWriter hadRegistered;
+   static FileWriter kafkaTopic;
+
 
    
    private OVScred srcCred;
@@ -283,6 +287,27 @@ System.out.println(outPath);
 		      verticaDDL.close();
 		      repoInsTbl.close();
 		      repoInsCols.close();
+		      
+		      // generate comands for checking existence
+		      String strText;
+		      hadRegistered = new FileWriter(new File(outPath + "hadRegistered.sql"));
+		      strText="select 'exit already!!!' from sync_table where source_db_id="
+		    		  +srcDBid+" and source_schema='"+srcSch+"' and source_table='"+srcTbl+"';";
+		      hadRegistered.write(strText);
+		      hadRegistered.close();
+		      
+		      //generate command for create kafka topic
+		      kafkaTopic = new FileWriter(new File(outPath + "kafkaTopic.sql"));
+		      strText="./bin/kafka-topics.sh --zookeeper usir1xrvkfk02:2181 --delete --topic " + srcSch+"."+srcTbl+"\n\n" +
+		              "./bin/kafka-topics.sh --create " + 
+		              "--zookeeper usir1xrvkfk02:2181 " + 
+		              "--replication-factor 2 " + 
+		              "--partitions 2 " + 
+		              "--config retention.ms=86400000 " + 
+		              "--topic " + srcSch+"."+srcTbl+" \n"  
+		              ;
+		      kafkaTopic.write(strText);
+		      kafkaTopic.close();
 		      
 		      FileWriter repoJournalRow = new FileWriter(new File(outPath + "repoJ400row.sql"));
 		      String jRow = "merge into VERTSNAP.sync_journal400 a \n" + 
