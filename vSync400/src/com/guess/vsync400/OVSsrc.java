@@ -144,6 +144,7 @@ class OVSsrc {
 
       return rtv;
    }
+   //used only by DB2toKafka,
    public boolean initForKafkaMeta() {
 	   boolean proceed=false;
 	   label=jMeta400.getLabel();
@@ -152,7 +153,14 @@ class OVSsrc {
 	   jName = jMeta400.getJournalName();
 
 	   setThisRefreshHostTS();
-	   setThisRefreshSeq();
+	   if( jMeta400.getSeqLastRefresh()==0 ){ //this means the Journal is to be first replicated,
+		   setThisRefreshSeq();  
+	       if( (seqThisFresh==0) )  // .. display_journal did not return, perhaps the journal is archived.
+	    	   setThisRefreshSeqInitExt();          // try the one with *CURCHAIN
+	       
+	       jMeta400.setThisRefreshSeq(seqThisFresh);            //set last to the current seqNum
+	       jMeta400.setSeqLastRefresh(seqThisFresh);           //and this too
+	   }
 	   if( seqThisFresh > jMeta400.getSeqLastRefresh())
 		   proceed=true;
 	  //return linit400();
@@ -330,7 +338,7 @@ class OVSsrc {
 
       if (jMeta400.getSeqLastRefresh() == 0) {
           ovLogger.error("initSrcLogQuery(): " + jLibName + "." + jName + " is not initialized.");
-    	  rtv=false;
+    	  rtv=false; //then initilize it     	  setThisRefreshSeqInitExt();
       }else {
           ovLogger.info("initSrcLogQuery(): " + jLibName + "." + jName + " last Seq: " + jMeta400.getSeqLastRefresh());
     	  strLastSeq =  Long.toString(jMeta400.getSeqLastRefresh());
@@ -472,7 +480,7 @@ class OVSsrc {
 	    	 //locate the ending SEQUENCE_NUMBER of this run:
 	    	 strSQL = " select max(SEQUENCE_NUMBER) "
 	            		+ " FROM table (Display_Journal('" + jLibName + "', '" + jName + "', "
-	            		+ "   '', '', "
+	            		+ "   '', '', "   //it looks like possible the journal can be switched and this SQL return no row.
 	            		+ "   cast(null as TIMESTAMP), "    //pass-in the start timestamp;
 	            		+ "   cast(null as decimal(21,0)), "    //starting SEQ #
 	            		+ "   'R', "   //JOURNAL cat: record operations
@@ -497,6 +505,41 @@ class OVSsrc {
 	         ovLogger.error(label + " error in setThisRefreshSeq(): "+ e); 
 	      }
    }
+   private void setThisRefreshSeqInitExt(){
+	      ResultSet lrRset;
+	      
+	      String strSQL;
+
+	      try {
+	    	 srcStmt = srcConn.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
+	    	 //locate the ending SEQUENCE_NUMBER of this run:
+	    	 strSQL = " select max(SEQUENCE_NUMBER) "
+	            		+ " FROM table (Display_Journal('" + jLibName + "', '" + jName + "', "
+	            		+ "   '', '*CURCHAIN', "   //it looks like possible the journal can be switched and this SQL return no row.
+	            		+ "   cast(null as TIMESTAMP), "    //pass-in the start timestamp;
+	            		+ "   cast(null as decimal(21,0)), "    //starting SEQ #
+	            		+ "   'R', "   //JOURNAL cat: record operations
+	            		+ "   '',"    //JOURNAL entry: UP,DL,PT,PX,UR,DR,UB 
+	            + "   '', '', '*QDDS', '',"  
+	      		+ "   '', '', ''"   //User, Job, Program
+	      		+ ") ) as x "
+	      		;
+	    	 	lrRset=srcStmt.executeQuery(strSQL);
+	            //I guess it could be 0 when DB2 just switched log file.
+	    	 	if (lrRset.next()) {
+	    	 		seqThisFresh = lrRset.getLong(1);  
+	    	 		if(jMeta400!=null)    //only if called from DB2toKafaka
+	    	 			jMeta400.setThisRefreshSeq(seqThisFresh);   
+	    	 		if(tblMeta!=null)     //from init, sync
+	    	 			tblMeta.setRefreshSeq(seqThisFresh);   
+	    	 	}
+	    	 	lrRset.close();
+
+	         srcStmt.close();
+	      } catch(SQLException e) {
+	         ovLogger.error(label + " error in setThisRefreshSeq(): "+ e); 
+	      }
+}
    public long getCurrSeq(){
 	      return seqThisFresh;
    }

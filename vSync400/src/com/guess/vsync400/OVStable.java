@@ -85,7 +85,8 @@ class OVStable {
       int recordCnt;
       int errorCnt;
       
-      //verify Journal_sequence is right:
+      // Make sure we had started replicating this Journal before initializing the table.
+      //  This is to gurantee no data loss due to gap in replicating journal.
       long curLogSeq = tblSrc.getThisRefreshSeq();
       if (db2KafkaMeta.getSeqLastRefresh() == 0 ) {
     	  ovLogger.info("Before initializing a table, please make sure the Journal has been started replicating to Kafka!!!" );

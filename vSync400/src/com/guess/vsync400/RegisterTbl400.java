@@ -140,7 +140,7 @@ public class RegisterTbl400 {
 	        	  if (scal > 0) {
 	        		  strDataSpec = "NUMBER(" +  sRset.getInt("length") + ", " + sRset.getInt("numeric_scale") + ")"; 
 
-	        		  xType = 5;
+	        		  xType = 4;   //was 5; but let's make them all DOUBLE
 	        		  xForm ="nvl(to_char(" + sRset.getString("column_name") + "), NULL)" ;
 	        	  } else {
 	        		  strDataSpec = "NUMBER(" +  sRset.getInt("length") + ")";

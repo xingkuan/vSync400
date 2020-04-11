@@ -220,5 +220,8 @@ class OVSmetaJournal400 {
    public long getSeqLastRefresh() {
 	   return seqLastRef;
    }
+   public void setSeqLastRefresh(long seq) {
+	   seqLastRef=seq;
+   }
 
 }    
