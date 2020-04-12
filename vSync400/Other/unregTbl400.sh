@@ -30,11 +30,11 @@ get_detailOfTblID () {
     select d.DB_DESC, t.SOURCE_SCHEMA||'.'||source_table, t.TARGET_SCHEMA||'.'||t.TARGET_TABLE
 from sync_table t, sync_db d
 where d.DB_ID = t.SOURCE_DB_ID
-and t.table_id=$tblID ;
+and t.table_id=$1 ;
 !
 }
 
-dtls=$(get_detailOfTblID $1)
+dtls=$(get_detailOfTblID $tblID)
 echo $dtls
 rslt=($dtls)
 SRCDB=${rslt[0]}
@@ -51,9 +51,9 @@ if [ "Y" = optDEL ]; then
   sqlplus -s $repURL <<!
   set pages 0
   delete VERTSNAP.SYNC_TABLE_FIELD
-  where table_id=$1 ;
+  where table_id=$tblID ;
   delete VERTSNAP.SYNC_TABLE
-  where table_id=$1 ;
+  where table_id=$tblID ;
   commit;
 !
   #

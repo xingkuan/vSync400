@@ -18,9 +18,9 @@ SYNCTYPE=$9
 OUTDIR=${10}
 TBLID=${11}
 
-VHOST=vertu01
+VHOST=vertx1
 VUSER=dbadmin
-VPASS='3Astere**s'
+VPASS='Bre@ker321'
 repDB='RMAN01';
 repUser='vertsnap';
 repPwd='BAtm0B1L#';

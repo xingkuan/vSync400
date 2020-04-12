@@ -153,8 +153,8 @@ class OVSsrc {
 	   jName = jMeta400.getJournalName();
 
 	   setThisRefreshHostTS();
+	   setThisRefreshSeq();  
 	   if( jMeta400.getSeqLastRefresh()==0 ){ //this means the Journal is to be first replicated,
-		   setThisRefreshSeq();  
 	       if( (seqThisFresh==0) )  // .. display_journal did not return, perhaps the journal is archived.
 	    	   setThisRefreshSeqInitExt();          // try the one with *CURCHAIN
 	       

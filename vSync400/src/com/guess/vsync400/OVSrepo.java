@@ -215,11 +215,7 @@ public List<String> getAS400JournalsByPoolID(int poolID) {
 	   String strSQL;
     OVScred repCred = dbCred[0];
     
-    //let's assume DB2 tables with be between tableID 1000 and 3000
-	   if(poolID < 0)
-		   strSQL = "select distinct(source_db_id||'.'||source_log_table) from sync_table where table_id between 1000 and 3000";
-	   else
-	      strSQL = "select distinct(source_db_id||'.'||source_log_table) from sync_table where table_id between 1000 and 3000 and pool_id = " + poolID ;
+	strSQL = "select source_db_id||'.'||source_log_table from sync_journal400 where pool_id = " + poolID ;
 	      
     // This shortterm solution is only for Oracle databases (as the source)
 	   try {
