@@ -134,6 +134,7 @@ public class DB2toKafka {
 		//JDBC result of "Display_jounral(), and iterate through it:
 		OVSsrc tblSrc = new OVSsrc();
 	    tblSrc.setMeta400(tblMeta);
+	    tblSrc.setLabel400(jobID+"."+poolID+"."+dbID+"."+jLib+"."+jName);
 		tblSrc.linit400();   //initialize src DB conn
 		boolean hasWork = tblSrc.initForKafkaMeta();
 		if(hasWork) {
@@ -161,7 +162,7 @@ public class DB2toKafka {
 				metrix.sendMX("JournalSeq,jobId="+jobID+",journal="+jLib+"."+jName+" value=" + seq + "\n");
 			} catch (SQLException e) {
 				ovLogger.error("   failed to retrieve from DB2: " + e);
-				success=false;
+				success=true;   // ignore this one, and move on to the next one.
 			} catch (InterruptedException e) {
 				ovLogger.error("   failed to write to kafka: " + e);
 				success=false;

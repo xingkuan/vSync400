@@ -154,7 +154,7 @@ class OVSsrc {
 
 	   setThisRefreshHostTS();
 	   setThisRefreshSeq();  
-	   if( jMeta400.getSeqLastRefresh()==0 ){ //this means the Journal is to be first replicated,
+	   if( jMeta400.getSeqLastRefresh()==0 ){ //this means the Journal is to be first replicated. INIT run!
 	       if( (seqThisFresh==0) )  // .. display_journal did not return, perhaps the journal is archived.
 	    	   setThisRefreshSeqInitExt();          // try the one with *CURCHAIN
 	       
@@ -166,6 +166,9 @@ class OVSsrc {
 	  //return linit400();
 	   
 	   return proceed;
+   }
+   public void setLabel400(String lbl) {  //TODO: too dirty code
+	   label=lbl;
    }
    public boolean linit400() {
 	      int attempts;
@@ -211,7 +214,7 @@ class OVSsrc {
 	         attempts++;
 	         
 	      try {
-	         ovLogger.info(label + " conn attempt " + attempts);
+	         //ovLogger.info(label + " conn attempt " + attempts);
 	         // this attempts a reset from a prior exception
 	         close();
 	         //establish DB connection
@@ -360,12 +363,41 @@ class OVSsrc {
 	    	              		+ ") ) as x where SEQUENCE_NUMBER > " + strLastSeq + " and SEQUENCE_NUMBER <=" + seqThisFresh + " order by 2 asc"   // something weird with DB2 function: the starting SEQ number seems not takining effect
 	    	              		;
 	         sRset=srcStmt.executeQuery(StrSQLRRN);
-	         ovLogger.info("   opened src jrnl recordset: " + label);
+	         if(sRset.isBeforeFirst())     // this check can throw exception, and do the needed below.
+	        	 ovLogger.info("   opened src jrnl recordset: " + label);
 	      } catch(SQLException e) {
 	         ovLogger.error("initSrcLogQuery() failure: " + e);
-	         rtv=false;
+	         //2020.04.12:
+	         //looks like it is possible that a Journal 0f the last entry can be deleted by this time,--which mayhappen if that journal was never used -- which will result in error.
+	         //  one way is to NOT use -- cast(" + strLastSeq + " as decimal(21,0)), . 
+	         //The code do it here in the hope of doing good thing. But the user should be the one to see if that is appropreate.
+	         ovLogger.warn("Posssible data loss! needed journal " + jLibName + "." + jName + " must have been deleted.");
+	         ovLogger.warn("  try differently of " + jLibName + "." + jName + ":");
+		      try {
+		 	    	  //srcStmt = srcConn.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
+		 	    	  String StrSQLx =  " select COUNT_OR_RRN as RRN,  SEQUENCE_NUMBER AS SEQNBR, trim(both from SUBSTR(OBJECT,11,10))||'.'||trim(both from SUBSTR(OBJECT,21,10)) as SRCTBL"
+		 	    	              		+ " FROM table (Display_Journal('" + jLibName + "', '" + jName + "', "
+		 	    	              		+ "   '', '" + strReceiver + "', "
+		 	    	              		+ "   cast(null as TIMESTAMP), " 
+		 	    	              		+ "   cast(null as decimal(21,0)), "   
+		 	    	              		+ "   'R', "   
+		 	    	              		+ "   '',"    
+		 	    	              		+ "   '', '', '*QDDS', '',"  
+		 	    	              		+ "   '', '', ''"   
+		 	    	              		+ ") ) as x where SEQUENCE_NUMBER > " + strLastSeq + " and SEQUENCE_NUMBER <=" + seqThisFresh + " order by 2 asc"   // something weird with DB2 function: the starting SEQ number seems not takining effect
+		 	    	              		;
+		 	         sRset=srcStmt.executeQuery(StrSQLx);
+		 	         ovLogger.info("   opened src jrnl recordset on ultimate try: " + label);
+		 	      } catch(SQLException ex) {
+			 	     ovLogger.error("  ultimate failure: " + jLibName + "." + jName + " !");
+		 	         ovLogger.error("  initSrcLogQuery() failure: " + ex);
+		 	         
+		 	         rtv=false;
+		 	      }
+		       }
+	         //rtv=false;
 	      }
-      }
+      //}
       return rtv;
    }
    
