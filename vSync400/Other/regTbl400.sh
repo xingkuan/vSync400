@@ -33,10 +33,23 @@ echo "pool ID:        $POOLID"
 #java -Djava.security.egd=file:/dev/../dev/urandom -cp ./bin:$CLASSPATH com.guess.vsync400.RegisterTbl400 7 JDAADM INVORD JDAADM.INVORD 4 test INVORD 11 1 c:\Users\johnlee\
 java -Djava.security.egd=file:/dev/../dev/urandom -cp ./bin:$CLASSPATH com.guess.vsync400.RegisterTbl400 $SRCDBID $SRCSCH $SRCTBL $SRCJRNL $TGTDBID $TGTSCH $TGTTBL $POOLID $SYNCTYPE $OUTDIR $TBLID
 
+sqlplus $repUser/$repPwd@$repDB @hadRegistered.sql
 read -p "regsiter. Press enter to continue ..."
+
 sqlplus $repUser/$repPwd@$repDB @repoTblDDL.sql
 sqlplus $repUser/$repPwd@$repDB @repoColsDDL.sql
 sqlplus $repUser/$repPwd@$repDB @repoJ400row.sql
 
 read -p "create tgt tbl in vertica. Press enter to continue ..."
 vsql -h$VHOST -U$VUSER -w -U dbadmin -w$VPASS -f $OUTDIR/verticaDDL.sql
+
+
+
+kafkaTopic.sh
+
+rm repoTblDML.sql
+rm repoColsDML.sql
+rm verticaDDL.sql
+rm repoJ400row.sql
+rm kafkaTopic.sh
+
