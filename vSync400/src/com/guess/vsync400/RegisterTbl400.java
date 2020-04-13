@@ -131,6 +131,10 @@ public class RegisterTbl400 {
 
         		  xType = 1;
         		  xForm ="nvl(" + sRset.getString("column_name") + ", NULL)" ;
+         	 } else if (sDataType.equals("DATE")) {
+	       		  strDataSpec = "TIMESTAMP";
+	       		  xType = 6;
+	       		  xForm ="nvl(to_char(" + sRset.getString("column_name") + ",''dd-mon-yyyy hh24:mi:ss''), NULL)" ;
         	 } else if (sDataType.equals("TIMESTMP")) {
         		  strDataSpec = "TIMESTAMP";
         		  xType = 6;
