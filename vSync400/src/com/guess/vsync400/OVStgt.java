@@ -158,6 +158,10 @@ long tmpLong;
                      tgtPStmt.setTimestamp(i,srcRset.getTimestamp(i));
 //Timestamp x6 =srcRset.getTimestamp(i);
                      break;
+                  case 7:     //Date
+                      tgtPStmt.setDate(i,srcRset.getDate(i));
+java.sql.Date x7 =srcRset.getDate(i);
+                      break;
                   case 100:     //alternate encoding
                      tgtPStmt.setString(i,new String(srcRset.getString(i).getBytes("ISO-8859-15"), "UTF-8"));
                      break;

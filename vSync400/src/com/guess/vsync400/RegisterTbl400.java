@@ -132,9 +132,9 @@ public class RegisterTbl400 {
         		  xType = 1;
         		  xForm ="nvl(" + sRset.getString("column_name") + ", NULL)" ;
          	 } else if (sDataType.equals("DATE")) {
-	       		  strDataSpec = "TIMESTAMP";
-	       		  xType = 6;
-	       		  xForm ="nvl(to_char(" + sRset.getString("column_name") + ",''dd-mon-yyyy hh24:mi:ss''), NULL)" ;
+	       		  strDataSpec = "DATE";
+	       		  xType = 7;
+	       		  xForm ="nvl(to_char(" + sRset.getString("column_name") + ",''dd-mon-yyyy''), NULL)" ;
         	 } else if (sDataType.equals("TIMESTMP")) {
         		  strDataSpec = "TIMESTAMP";
         		  xType = 6;
@@ -303,7 +303,7 @@ System.out.println(outPath);
 		      //generate command for create kafka topic
 		      kafkaTopic = new FileWriter(new File(outPath + "kafkaTopic.sh"));
 		      strText="/opt/kafka/bin/kafka-topics.sh --zookeeper usir1xrvkfk02:2181 --delete --topic " + srcSch+"."+srcTbl+"\n\n" +
-		              "./bin/kafka-topics.sh --create " + 
+		              "/opt/kafka/bin/kafka-topics.sh --create " + 
 		              "--zookeeper usir1xrvkfk02:2181 " + 
 		              "--replication-factor 2 " + 
 		              "--partitions 2 " + 
@@ -315,7 +315,7 @@ System.out.println(outPath);
 		      
 		      FileWriter repoJournalRow = new FileWriter(new File(outPath + "repoJ400row.sql"));
 		      String jRow = "merge into VERTSNAP.sync_journal400 a \n" + 
-		      		"using (select distinct source_db_id, source_log_table from VERTSNAP.sync_table where table_id>=1000 and table_id <2000 ) b \n" + 
+		      		"using (select distinct source_db_id, source_log_table from VERTSNAP.sync_table where pool_id = " + poolID + " ) b \n" + 
 		      		"on (a.source_db_id = b.source_db_id and a.source_log_table=b.source_log_table) \n" + 
 		      		"when not matched then \n" + 
 		      		"  insert (a.source_db_id, a.source_log_table) \n" + 
