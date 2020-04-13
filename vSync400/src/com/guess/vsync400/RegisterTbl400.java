@@ -297,8 +297,8 @@ System.out.println(outPath);
 		      hadRegistered.close();
 		      
 		      //generate command for create kafka topic
-		      kafkaTopic = new FileWriter(new File(outPath + "kafkaTopic.sql"));
-		      strText="./bin/kafka-topics.sh --zookeeper usir1xrvkfk02:2181 --delete --topic " + srcSch+"."+srcTbl+"\n\n" +
+		      kafkaTopic = new FileWriter(new File(outPath + "kafkaTopic.sh"));
+		      strText="/opt/kafka/bin/kafka-topics.sh --zookeeper usir1xrvkfk02:2181 --delete --topic " + srcSch+"."+srcTbl+"\n\n" +
 		              "./bin/kafka-topics.sh --create " + 
 		              "--zookeeper usir1xrvkfk02:2181 " + 
 		              "--replication-factor 2 " + 
