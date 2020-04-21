@@ -328,12 +328,14 @@ class OVStable {
 		  String topic=tblMeta.getSrcSchema()+"."+tblMeta.getSrcTable();
 		   KafkaConsumer<Long, String> consumerx = createKafkaConsumer(topic);
 
+          ovLogger.info("    START on this table.");
 		  while (true) {     
 				//blocking call:
 		        ConsumerRecords<Long, String> records =	consumerx.poll(Duration.ofMillis(pollWaitMil));
 		        //ConsumerRecords<Long, String> records =	consumerx.poll(0);
 		        if (records.count()==0) {
 		            noRecordsCount++;
+		            ovLogger.info("    consumer poll cnt: " + noRecordsCount);
 		            if (noRecordsCount > giveUp) break;    //no more records. exit 
 		            else continue;
 		        }
@@ -354,7 +356,7 @@ class OVStable {
 		        	
 		        	cntRRN++;
 		        }
-		        
+		        ovLogger.info("    processing to: " + cntRRN);
 	        	success = replicateRRNList(rrnList);
 	        	if (!success) break;
 	        	//in case there are more in Kafka broker, start the next cycle:
@@ -363,6 +365,7 @@ class OVStable {
 	        	firstItem=true;
 		  }
  		  
+          ovLogger.info("    COMPLETE on this table.");
 		  consumerx.close();  
 
 		  java.sql.Timestamp ts = new java.sql.Timestamp(System.currentTimeMillis()); 

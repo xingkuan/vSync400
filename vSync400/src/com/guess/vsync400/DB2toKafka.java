@@ -144,10 +144,13 @@ public class DB2toKafka {
 	
 	        int rrn=0;
 	        long seq=0l;
+	        int cnt=0;
 	        String srcTbl="";
 	        tblSrc.initSrcLogQuery400();
+			ovLogger.info("      BEGING");
 	        ResultSet srcRset = tblSrc.getSrcResultSet();   //the journal lib and member names are in thetblMeta.
 	        try {
+	        	cnt++;
 				while (srcRset.next()) {
 					rrn=srcRset.getInt("RRN");
 					seq=srcRset.getLong("SEQNBR");
@@ -156,6 +159,10 @@ public class DB2toKafka {
 					if (tblList.contains(srcTbl)) {
 						aMsg = new ProducerRecord<Long, String>(srcTbl, seq, String.valueOf(rrn));
 						RecordMetadata metadata = producer.send(aMsg).get();
+					}
+					if(cnt==5000) {
+						ovLogger.info("      +5000");
+						cnt=0;
 					}
 				}
 				ovLogger.info("   last Journal Seq #: " + seq);
