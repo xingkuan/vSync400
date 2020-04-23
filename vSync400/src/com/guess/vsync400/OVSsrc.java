@@ -273,7 +273,8 @@ class OVSsrc {
       String sqlStmt = tblMeta.getSQLSelect() + " " + whereClause;
       //String sqlStmt = "select * from johnlee2.testtbl2";
       try {
-    	 srcStmt = srcConn.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
+    	 //2020.04.23:
+    	 //It is open already! srcStmt = srcConn.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
          sRset=srcStmt.executeQuery(sqlStmt);
       } catch(SQLException e) {
          ovLogger.error(label + " recordset not created");
