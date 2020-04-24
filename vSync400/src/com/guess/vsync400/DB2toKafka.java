@@ -150,8 +150,8 @@ public class DB2toKafka {
 			ovLogger.info("      BEGING");
 	        ResultSet srcRset = tblSrc.getSrcResultSet();   //the journal lib and member names are in thetblMeta.
 	        try {
-	        	cnt++;
 				while (srcRset.next()) {
+		        	cnt++;
 					rrn=srcRset.getInt("RRN");
 					seq=srcRset.getLong("SEQNBR");
 					srcTbl=srcRset.getString("SRCTBL");
@@ -160,7 +160,7 @@ public class DB2toKafka {
 						aMsg = new ProducerRecord<Long, String>(srcTbl, seq, String.valueOf(rrn));
 						RecordMetadata metadata = producer.send(aMsg).get();
 					}
-					if(cnt==5000) {
+					if(cnt==5000) {   //when the job is too big, this progress reporter could be helpful.
 						ovLogger.info("      +5000");
 						cnt=0;
 					}
@@ -194,11 +194,13 @@ public class DB2toKafka {
 
 	    String strVal = conf.getConf("kafkaMaxBlockMS");
 		int kafkaMaxBlockMS = Integer.parseInt(strVal);
-		//String kafkaURL = conf.getConf("kafkaURL");
-		String kafkaURL="usir1xrvkfk04:9092";
+		String kafkaURL = conf.getConf("kafkaURL");
+		//String kafkaURL="usir1xrvkfk04:9092";
+		String kafkaACKS = conf.getConf("kafkaACKS");
         
 	    propx.put("bootstrap.servers", kafkaURL);
-	    propx.put("acks", "all");
+	    //propx.put("acks", "all");
+	    propx.put("acks", kafkaACKS);
 	    propx.put("retries", 0);
 	    propx.put("batch.size", 16384);
 	    propx.put("linger.ms", 1);
