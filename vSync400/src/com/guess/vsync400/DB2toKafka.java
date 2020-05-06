@@ -64,7 +64,7 @@ public class DB2toKafka {
 	    String strVal = conf.getConf("kafkaMaxBlockMS");
 		int kafkaMaxBlockMS = Integer.parseInt(strVal);
 
-
+		//props.put("request.timeout.ms", 60000);
 	    props.put("bootstrap.servers", kafkaURL);
 	    props.put("acks", "all");
 	    props.put("retries", 0);
@@ -148,6 +148,7 @@ public class DB2toKafka {
 	        String srcTbl="";
 	        tblSrc.initSrcLogQuery400();
 			ovLogger.info("      BEGING");
+			RecordMetadata metadata;
 	        ResultSet srcRset = tblSrc.getSrcResultSet();   //the journal lib and member names are in thetblMeta.
 	        try {
 				while (srcRset.next()) {
@@ -158,7 +159,8 @@ public class DB2toKafka {
 					// ignore those for unregister tables:
 					if (tblList.contains(srcTbl)) {
 						aMsg = new ProducerRecord<Long, String>(srcTbl, seq, String.valueOf(rrn));
-						RecordMetadata metadata = producer.send(aMsg).get();
+						//metadata = producer.send(aMsg).get();
+						producer.send(aMsg);
 					}
 					if(cnt==5000) {   //when the job is too big, this progress reporter could be helpful.
 						ovLogger.info("      +5000");
@@ -170,13 +172,13 @@ public class DB2toKafka {
 			} catch (SQLException e) {
 				ovLogger.error("   failed to retrieve from DB2: " + e);
 				success=true;   // ignore this one, and move on to the next one.
-			} catch (InterruptedException e) {
-				ovLogger.error("   failed to write to kafka: " + e);
+			} /*catch (InterruptedException e) {
+				ovLogger.error("   failed to write to kafka I: " + e);
 				success=false;
 			} catch (ExecutionException e) {
-				ovLogger.error("   failed to write to kafka: " + e);
+				ovLogger.error("   failed to write to kafka E: " + e);
 				success=false;
-			}
+			}*/
 		}
         tblMeta.markEndTime();
         //Timestamp ts = new Timestamp(System.currentTimeMillis());

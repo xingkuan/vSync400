@@ -230,9 +230,12 @@ class OVStable {
    }
    
    private KafkaConsumer<Long, String> createKafkaConsumer(String topic){
+	   String kafkaURL = conf.getConf("kafkaURL");
+	   
 	   String consumerGrp = jobID+tblMeta.getTableID();
 		Properties propsx = new Properties();
-		propsx.put("bootstrap.servers", "usir1xrvkfk01:9092,usir1xrvkfk02:9092");
+		//propsx.put("bootstrap.servers", "usir1xrvkfk01:9092,usir1xrvkfk02:9092");
+		propsx.put("bootstrap.servers", kafkaURL);
 	    propsx.put("group.id", consumerGrp);
 	    //propsx.put(ConsumerConfig.GROUP_ID_CONFIG, jobID);
 	    propsx.put("client.id", jobID);
