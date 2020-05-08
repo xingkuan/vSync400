@@ -329,7 +329,7 @@ class OVSsrc {
       return rtv;
    }
    */
-   public boolean initSrcLogQuery400() {  
+   public boolean initSrcLogQuery400(List<String> tblList) {  
    //now, this is only used by DB2toKafka   
 	  linit400();  
 	   
@@ -339,7 +339,15 @@ class OVSsrc {
       String strLastSeq;
       String strReceiver;
 
-
+	  String whereClauseT = " (";
+	  for (int i = 0; i < tblList.size(); i++) {
+		  if (i==0)
+			  whereClauseT = whereClauseT + "'" + tblList.get(i) + "'";
+		  else
+			  whereClauseT = whereClauseT + ", '" + tblList.get(i) + "'";
+      }
+	  whereClauseT = whereClauseT + ") ";
+	  
       if (jMeta400.getSeqLastRefresh() == 0) {
           ovLogger.error("initSrcLogQuery(): " + jLibName + "." + jName + " is not initialized.");
     	  rtv=false; //then initilize it     	  setThisRefreshSeqInitExt();
@@ -361,8 +369,11 @@ class OVSsrc {
 	    	              		+ "   '',"    //JOURNAL entry: UP,DL,PT,PX,UR,DR,UB
 	    	              		+ "   '', '', '*QDDS', '',"  //Object library, Object name, Object type, Object member
 	    	              		+ "   '', '', ''"   //User, Job, Program
-	    	              		+ ") ) as x where SEQUENCE_NUMBER > " + strLastSeq + " and SEQUENCE_NUMBER <=" + seqThisFresh + " order by 2 asc"   // something weird with DB2 function: the starting SEQ number seems not takining effect
+	    	              		+ ") ) as x where SEQUENCE_NUMBER > " + strLastSeq + " and SEQUENCE_NUMBER <=" + seqThisFresh 
+	    	              		+ " and trim(both from SUBSTR(OBJECT,11,10))||'.'||trim(both from SUBSTR(OBJECT,21,10)) in " +  whereClauseT 
+	    	              		+ " order by 2 asc"   // something weird with DB2 function: the starting SEQ number seems not takining effect
 	    	              		;
+	    	 // ovLogger.info(StrSQLRRN);
 	         sRset=srcStmt.executeQuery(StrSQLRRN);
 	         if(sRset.isBeforeFirst())     // this check can throw exception, and do the needed below.
 	        	 ovLogger.info("   opened src jrnl recordset: " + label);

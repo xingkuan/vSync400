@@ -12,6 +12,7 @@ import java.util.concurrent.ExecutionException;
 
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
@@ -63,12 +64,21 @@ public class DB2toKafka {
         String kafkaURL = conf.getConf("kafkaURL");
 	    String strVal = conf.getConf("kafkaMaxBlockMS");
 		int kafkaMaxBlockMS = Integer.parseInt(strVal);
+		String kafkaACKS = conf.getConf("kafkaACKS");
+		String kafkaINDEM = conf.getConf("kafkaINDEM");
+		strVal = conf.getConf("kafkaSNDS");
+		int kafkaSendTries =Integer.parseInt(strVal);
 
 		//props.put("request.timeout.ms", 60000);
 	    props.put("bootstrap.servers", kafkaURL);
-	    props.put("acks", "all");
-	    props.put("retries", 0);
-	    props.put("batch.size", 16384);
+	    props.put("client.id", "producer"+poolID);
+	//    props.put("transactional.id", "DtoK"+poolID);
+	    //props.put("acks", "all");
+	    props.put("acks", kafkaACKS);
+	    props.put("enable.idempotence", kafkaINDEM);
+	    //props.put("message.send.max.retries", kafkaSendTries);
+	//    props.put("retries", kafkaSendTries);
+	    props.put("batch.size", 1638400);
 	    props.put("linger.ms", 1);
 	    props.put("buffer.memory", 33554432);
 	    props.put("max.block.ms", kafkaMaxBlockMS );     //default 60000 ms
@@ -119,9 +129,6 @@ public class DB2toKafka {
 	private boolean replicate(int dbID, String jLib, String jName){
 		boolean success=true;
 		
-	    ProducerRecord<Long, String> aMsg;
-	    //ProducerRecord<String, String> aMsg;
-	   
 	    List<String> tblList;
 	    
 		//The DB2 journal
@@ -144,13 +151,18 @@ public class DB2toKafka {
 	
 	        int rrn=0;
 	        long seq=0l;
-	        int cnt=0;
+	        int cnt=0, xcnt=0, chgCnt=0;
 	        String srcTbl="";
-	        tblSrc.initSrcLogQuery400();
+	        tblSrc.initSrcLogQuery400(tblList);
 			ovLogger.info("      BEGING");
 			RecordMetadata metadata;
+		    //ProducerRecord<Long, String> aMsg;
+		    //ProducerRecord<String, String> aMsg;
+		   
 	        ResultSet srcRset = tblSrc.getSrcResultSet();   //the journal lib and member names are in thetblMeta.
+        	//producer.initTransactions();
 	        try {
+	        	//producer.beginTransaction();
 				while (srcRset.next()) {
 		        	cnt++;
 					rrn=srcRset.getInt("RRN");
@@ -158,21 +170,48 @@ public class DB2toKafka {
 					srcTbl=srcRset.getString("SRCTBL");
 					// ignore those for unregister tables:
 					if (tblList.contains(srcTbl)) {
-						aMsg = new ProducerRecord<Long, String>(srcTbl, seq, String.valueOf(rrn));
+						xcnt++;
+						chgCnt++;
+					final	ProducerRecord<Long, String>	aMsg = new ProducerRecord<Long, String>(srcTbl, seq, String.valueOf(rrn));
 						//metadata = producer.send(aMsg).get();
-						producer.send(aMsg);
+						//producer.send(aMsg);
+						producer.send(aMsg, new Callback() {
+		                    public void onCompletion(RecordMetadata recordMetadata, Exception e) {
+		                        //execute everytime a record is successfully sent or exception is thrown
+		                        if(e == null){
+		                           // No Exception
+		                        }else{
+		    						ovLogger.error("      exception at " + " " + aMsg.key() + ". Exit here!");
+		    						ovLogger.error(e);
+		    						//set the aMsg.key and exit. Question: will the loop stop when encounter this exception?
+		    						tblMeta.setThisRefreshSeq(aMsg.key());
+		                        }
+		                    }
+		                });
 					}
 					if(cnt==5000) {   //when the job is too big, this progress reporter could be helpful.
-						ovLogger.info("      +5000");
-						cnt=0;
+						ovLogger.info("      +5000" + ", " + xcnt + ", " + srcTbl);
+						cnt=0; xcnt=0;
 					}
 				}
-				ovLogger.info("   last Journal Seq #: " + seq);
-				metrix.sendMX("JournalSeq,jobId="+jobID+",journal="+jLib+"."+jName+" value=" + seq + "\n");
+				//ovLogger.info("   last Journal Seq #: " + seq);
+				ovLogger.info("   last Journal Seq #: " + tblSrc.getCurrSeq());
+				ovLogger.info("   cnt of changes sent: " + chgCnt);
+				//metrix.sendMX("JournalSeq,jobId="+jobID+",journal="+jLib+"."+jName+" value=" + seq + "\n");
+				metrix.sendMX("JournalSeq,jobId="+jobID+",journal="+jLib+"."+jName+" value=" + tblSrc.getCurrSeq() + "\n");
+				//producer.commitTransaction();
 			} catch (SQLException e) {
 				ovLogger.error("   failed to retrieve from DB2: " + e);
 				success=true;   // ignore this one, and move on to the next one.
-			} /*catch (InterruptedException e) {
+			} catch (Exception e1) {
+				//producer.abortTransaction();
+				ovLogger.error("   failed to write to kafka E: " + e1);
+			}finally{
+				producer.flush();
+				//producer.close();
+			}
+	        /*catch (InterruptedException e) {
+			}
 				ovLogger.error("   failed to write to kafka I: " + e);
 				success=false;
 			} catch (ExecutionException e) {
@@ -229,3 +268,4 @@ public class DB2toKafka {
 		}
 	}
 }
+
